@@ -1,29 +1,26 @@
 const PROVIDERS = [
   {
-    name: "openrouter1",
-    endpoint: "https://openrouter.ai/api/v1/chat/completions",
-    apiKey: () => process.env.OPENROUTER_API_KEY,
-    model: "google/gemma-4-31b-it:free",
-    supportsJsonMode: true,
-  },
-  {
     name: "openrouter2",
     endpoint: "https://openrouter.ai/api/v1/chat/completions",
     apiKey: () => process.env.OPENROUTER_API_KEY_2,
     model: "openai/gpt-oss-120b:free",
-    supportsJsonMode: true,
+  },
+  {
+    name: "openrouter1",
+    endpoint: "https://openrouter.ai/api/v1/chat/completions",
+    apiKey: () => process.env.OPENROUTER_API_KEY,
+    model: "google/gemma-4-31b-it:free",
   },
   {
     name: "groq",
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     apiKey: () => process.env.GROQ_API_KEY,
-    model: "llama3-70b-8192",
-    supportsJsonMode: false,
+    model: "llama-3.3-70b-versatile",
   },
 ];
 
 function isRetryable(status: number): boolean {
-  return [401, 402, 403, 429, 500, 502, 503].includes(status);
+  return [400, 401, 402, 403, 429, 500, 502, 503].includes(status);
 }
 
 function extractErrorMessage(data: any): string {
@@ -31,6 +28,8 @@ function extractErrorMessage(data: any): string {
   if (typeof data?.error === "string") return data.error;
   return "Unknown API error";
 }
+
+const JSON_INSTRUCTION = `\n\nYou MUST respond with valid JSON only. No markdown, no explanation, nothing else. The JSON must have these fields: subject (string), html (string), text (string).`;
 
 export async function callAI({
   messages,
@@ -56,33 +55,40 @@ export async function callAI({
       : controller.signal;
 
     try {
+      const msgs = structuredClone(messages);
+
+      const last = msgs[msgs.length - 1];
+      if (typeof last.content === "string") {
+        last.content += JSON_INSTRUCTION;
+      } else if (Array.isArray(last.content)) {
+        const textPart = last.content.find((p: any) => p.type === "text");
+        if (textPart) {
+          textPart.text += JSON_INSTRUCTION;
+        } else {
+          last.content.push({ type: "text", text: JSON_INSTRUCTION.trim() });
+        }
+      }
+
       const body: Record<string, any> = {
         model: provider.model,
-        messages,
+        messages: msgs,
         max_tokens: 2000,
       };
 
-      if (provider.supportsJsonMode) {
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+
+      if (provider.name.startsWith("openrouter")) {
+        headers["HTTP-Referer"] =
+          process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
         body.response_format = { type: "json_object" };
-      } else {
-        messages[messages.length - 1] = {
-          ...messages[messages.length - 1],
-          content:
-            typeof messages[messages.length - 1].content === "string"
-              ? `${messages[messages.length - 1].content}\n\nRespond with valid JSON only.`
-              : messages[messages.length - 1].content,
-        };
       }
 
       const res = await fetch(provider.endpoint, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          ...(provider.name.startsWith("openrouter")
-            ? { "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000" }
-            : {}),
-        },
+        headers,
         body: JSON.stringify(body),
         signal: combinedSignal,
       });
@@ -91,13 +97,13 @@ export async function callAI({
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        const errMsg = `${provider.name} (${res.status}): ${extractErrorMessage(errorData)}`;
-        lastError.push(errMsg);
+        const errMsg = extractErrorMessage(errorData);
+        lastError.push(`${provider.name} (${res.status}): ${errMsg}`);
 
         if (isRetryable(res.status)) {
           continue;
         }
-        throw new Error(errMsg);
+        throw new Error(`${provider.name} (${res.status}): ${errMsg}`);
       }
 
       const data = await res.json();
@@ -116,14 +122,14 @@ export async function callAI({
           .trim();
         parsed = JSON.parse(cleaned);
       } catch {
-        lastError.push(`${provider.name}: invalid JSON response`);
+        lastError.push(`${provider.name}: invalid JSON response — "${raw.slice(0, 100)}"`);
         continue;
       }
 
       return {
-        subject: parsed.subject || "",
-        html: parsed.html || "",
-        text: parsed.text || "",
+        subject: (parsed.subject || "").toString(),
+        html: (parsed.html || "").toString(),
+        text: (parsed.text || "").toString(),
         provider: provider.name,
       };
     } catch (err: any) {
