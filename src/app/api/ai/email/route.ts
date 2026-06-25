@@ -83,8 +83,9 @@ Do NOT include any <img>, header banner, or logo — only the body content.`;
         "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
       },
       body: JSON.stringify({
-        model: "anthropic/claude-sonnet-4",
+        model: "google/gemini-2.0-flash-exp",
         messages,
+        max_tokens: 2000,
         response_format: { type: "json_object" },
       }),
     });
