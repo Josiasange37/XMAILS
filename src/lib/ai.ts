@@ -8,12 +8,12 @@ const PROVIDERS = [
   {
     name: "openrouter2",
     apiKey: () => process.env.OPENROUTER_API_KEY_2,
-    model: "openai/gpt-oss-120b:free",
+    model: "deepseek/deepseek-chat-v3-0324:free",
   },
   {
     name: "openrouter1",
     apiKey: () => process.env.OPENROUTER_API_KEY,
-    model: "google/gemma-4-31b-it:free",
+    model: "mistralai/mistral-small-3.1-24b-instruct:free",
   },
   {
     name: "groq",

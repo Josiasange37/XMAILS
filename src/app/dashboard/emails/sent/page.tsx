@@ -1,8 +1,9 @@
 "use client";
 import { PageTransition } from "@/components/page-transition";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import ContactSelect from "@/components/contact-select";
@@ -28,6 +29,18 @@ export default function SentPage() {
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ subject: string; html: string; text: string } | null>(null);
+  const [editSubject, setEditSubject] = useState("");
+  const [editHtml, setEditHtml] = useState("");
+  const [editText, setEditText] = useState("");
+
+  useEffect(() => {
+    if (result) {
+      setEditSubject(result.subject);
+      setEditHtml(result.html);
+      setEditText(result.text);
+    }
+  }, [result]);
+
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -111,9 +124,9 @@ export default function SentPage() {
         body: JSON.stringify({
           from: "Xyberclan <noreply@xyberclan.dev>",
           to: [toEmail],
-          subject: result.subject,
-          html: result.html,
-          text: result.text,
+          subject: editSubject,
+          html: editHtml,
+          text: editText,
         }),
       });
       if (!res.ok) throw new Error("Failed to send");
@@ -290,20 +303,44 @@ export default function SentPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Subject</p>
-                    <p className="text-sm font-medium text-foreground">{result.subject}</p>
+                  <div>
+                    <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">Subject</label>
+                    <Input
+                      value={editSubject}
+                      onChange={(e) => setEditSubject(e.target.value)}
+                      className="text-sm font-medium"
+                    />
                   </div>
 
                   <div className="border rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 border-b">
-                      <p className="text-xs text-muted-foreground">Email body</p>
+                    <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 border-b flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">Email body (preview)</p>
                     </div>
                     <iframe
-                      srcDoc={result.html}
-                      className="w-full h-[400px]"
+                      srcDoc={editHtml}
+                      className="w-full h-[300px]"
                       title="Email preview"
                       sandbox="allow-same-origin"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">HTML</label>
+                    <Textarea
+                      value={editHtml}
+                      onChange={(e) => setEditHtml(e.target.value)}
+                      rows={8}
+                      className="text-xs font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">Plain text</label>
+                    <Textarea
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      rows={4}
+                      className="text-xs font-mono"
                     />
                   </div>
 

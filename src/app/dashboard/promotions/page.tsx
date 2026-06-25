@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import ContactSelect from "@/components/contact-select";
 import {
@@ -26,6 +27,17 @@ export default function PromotionsPage() {
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ subject: string; html: string; text: string } | null>(null);
+  const [editSubject, setEditSubject] = useState("");
+  const [editHtml, setEditHtml] = useState("");
+  const [editText, setEditText] = useState("");
+
+  useEffect(() => {
+    if (result) {
+      setEditSubject(result.subject);
+      setEditHtml(result.html);
+      setEditText(result.text);
+    }
+  }, [result]);
 
   const fetchData = () => {
     setLoading(true);
@@ -116,9 +128,9 @@ export default function PromotionsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subject: result.subject,
-          html: result.html,
-          text: result.text,
+          subject: editSubject,
+          html: editHtml,
+          text: editText,
           from: "Xyberclan <noreply@xyberclan.dev>",
           to: recipients,
         }),
@@ -247,11 +259,19 @@ export default function PromotionsPage() {
                   </h3>
                   {result ? (
                     <div className="space-y-4">
-                      <div className="p-3 rounded-lg bg-muted">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Subject</p>
-                        <p className="text-sm font-medium text-foreground">{result.subject}</p>
+                      <div>
+                        <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">Subject</label>
+                        <Input value={editSubject} onChange={(e) => setEditSubject(e.target.value)} className="text-sm font-medium" />
                       </div>
-                      <iframe srcDoc={result.html} className="w-full h-80 rounded-lg border" title="Preview" sandbox="allow-same-origin" />
+                      <iframe srcDoc={editHtml} className="w-full h-60 rounded-lg border" title="Preview" sandbox="allow-same-origin" />
+                      <div>
+                        <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">HTML</label>
+                        <Textarea value={editHtml} onChange={(e) => setEditHtml(e.target.value)} rows={6} className="text-xs font-mono" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">Plain text</label>
+                        <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={3} className="text-xs font-mono" />
+                      </div>
                       <Button onClick={sendPromotion} disabled={sending} className="w-full" size="lg">
                         {sending ? (
                           <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending to {selectedContacts.length} contact(s)...</>
