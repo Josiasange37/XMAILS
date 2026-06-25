@@ -7,12 +7,13 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status");
+    const limit = Math.min(Number(searchParams.get("limit")) || 100, 200);
 
     let query = db
       .from("emails")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(limit);
 
     if (status) {
       query = db
@@ -20,17 +21,22 @@ export async function GET(request: NextRequest) {
         .select("*")
         .eq("status", status)
         .order("created_at", { ascending: false })
-        .limit(100);
+        .limit(limit);
     }
 
     const { data: emails, error } = await query;
-
     if (error) throw error;
+
+    const parseTo = (val: string): string[] => {
+      if (!val) return [];
+      try { const p = JSON.parse(val); return Array.isArray(p) ? p : [p]; }
+      catch { return val.split(",").map((s) => s.trim()).filter(Boolean); }
+    };
 
     const mapped = (emails || []).map((e: any) => ({
       id: e.id,
       from: e.from_email,
-      to: JSON.parse(e.to_email || "[]"),
+      to: parseTo(e.to_email),
       subject: e.subject,
       status: e.status,
       createdAt: e.created_at,

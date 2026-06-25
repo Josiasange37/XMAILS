@@ -28,14 +28,17 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([
-      fetch("/api/analytics/overview").then((r) => r.json()),
-      fetch("/api/emails?limit=5").then((r) => r.json()),
+      fetch("/api/analytics/overview").then((r) => r.json()).catch(() => ({})),
+      fetch("/api/emails?limit=5").then((r) => r.json()).catch(() => ({ emails: [] })),
     ]).then(([overview, emails]) => {
-      setStats(overview);
-      setRecentEmails(emails.emails || []);
+      if (cancelled) return;
+      if (!overview.error) setStats(overview);
+      if (!emails.error) setRecentEmails(emails.emails || []);
       setLoading(false);
     });
+    return () => { cancelled = true; };
   }, []);
 
   const statCards = [
