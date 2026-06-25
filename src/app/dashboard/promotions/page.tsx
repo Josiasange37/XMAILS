@@ -69,7 +69,7 @@ export default function PromotionsPage() {
     const fullPrompt = `This is a promotional email sent to multiple contacts. Use "${sampleName}" as a sample recipient. Use {{first_name}} as a placeholder for each contact's name.\n\n${prompt.trim()}`;
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
+      const timeout = setTimeout(() => controller.abort(), 60000);
       const res = await fetch("/api/ai/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

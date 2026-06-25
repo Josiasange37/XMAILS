@@ -67,7 +67,7 @@ export default function SentPage() {
     const fullPrompt = `Write an email to ${recipientName}${c.company ? ` at ${c.company}` : ""} (${c.email}).\n\n${prompt.trim()}`;
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
+      const timeout = setTimeout(() => controller.abort(), 60000);
       const res = await fetch("/api/ai/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
