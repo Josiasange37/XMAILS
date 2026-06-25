@@ -1,0 +1,313 @@
+"use client";
+import { PageTransition } from "@/components/page-transition";
+import { useEffect, useState, useRef } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/toast";
+import ContactSelect from "@/components/contact-select";
+import {
+  Sparkles, Send, Loader2, Upload, X, FileText, FileImage, File,
+  Trash2, Megaphone, Eye
+} from "lucide-react";
+import { formatDateTime } from "@/lib/utils";
+
+export default function PromotionsPage() {
+  const { addToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [promotions, setPromotions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+
+  const [prompt, setPrompt] = useState("");
+  const [files, setFiles] = useState<{ name: string; mime: string; content: string; size: number }[]>([]);
+  const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ subject: string; html: string; text: string } | null>(null);
+
+  const fetchData = () => {
+    setLoading(true);
+    fetch("/api/promotions")
+      .then((r) => r.json())
+      .then((data) => {
+        setPromotions(Array.isArray(data) ? data : []);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const uploaded = e.target.files;
+    if (!uploaded) return;
+    Array.from(uploaded).forEach((file) => {
+      if (files.length >= 5) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(",")[1];
+        setFiles((prev) => [...prev, { name: file.name, mime: file.type, content: base64, size: file.size }]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  };
+
+  const removeFile = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index));
+
+  const generateEmail = async () => {
+    if (!prompt.trim()) return;
+    if (selectedContacts.length === 0) {
+      addToast({ title: "Select at least one contact", variant: "destructive" });
+      return;
+    }
+    setGenerating(true);
+    setResult(null);
+    const c = selectedContacts[0];
+    const sampleName = c ? [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email : "a contact";
+    const fullPrompt = `This is a promotional email sent to multiple contacts. Use "${sampleName}" as a sample recipient. Use {{first_name}} as a placeholder for each contact's name.\n\n${prompt.trim()}`;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      const res = await fetch("/api/ai/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: fullPrompt,
+          files: files.length > 0 ? files : undefined,
+          contact: selectedContacts.length === 1 ? selectedContacts[0] : null,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        const text = await res.text().catch(() => "");
+        throw new Error(text ? `Server error: ${text.slice(0, 200)}` : "Could not parse server response");
+      }
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      setResult(data);
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        addToast({ title: "Request timed out", variant: "destructive" });
+      } else {
+        addToast({ title: "AI generation failed", description: err.message, variant: "destructive" });
+      }
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const sendPromotion = async () => {
+    if (!result || selectedContacts.length === 0) return;
+    setSending(true);
+    try {
+      const recipients = selectedContacts.map((c: any) => ({
+        email: c.email,
+        first_name: c.first_name,
+        last_name: c.last_name,
+        company: c.company,
+      }));
+
+      const res = await fetch("/api/promotions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: result.subject,
+          html: result.html,
+          text: result.text,
+          from: "Xyberclan <noreply@xyberclan.dev>",
+          to: recipients,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send");
+      const sent = (data.results || []).filter((r: any) => r.status === "sent").length;
+      addToast({ title: `Promotion sent to ${sent} recipient(s)`, variant: "success" });
+      setShowCreate(false);
+      setPrompt("");
+      setFiles([]);
+      setSelectedContacts([]);
+      setResult(null);
+      fetchData();
+    } catch (err: any) {
+      addToast({ title: "Failed to send promotion", description: err.message, variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+  };
+
+  const fileIcon = (mime: string) => {
+    if (mime.startsWith("image/")) return <FileImage className="h-4 w-4 text-muted-foreground" />;
+    if (mime.includes("pdf")) return <FileText className="h-4 w-4 text-red-500" />;
+    return <File className="h-4 w-4 text-gray-500" />;
+  };
+
+  return (
+    <PageTransition>
+    <div className="max-w-5xl mx-auto space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Promotions</h1>
+          <p className="text-muted-foreground mt-1">
+            {promotions.length} campaign{promotions.length !== 1 ? "s" : ""} sent
+          </p>
+        </div>
+        <Button onClick={() => { setShowCreate(!showCreate); if (showCreate) { setResult(null); setPrompt(""); setFiles([]); setSelectedContacts([]); } }}>
+          {showCreate ? "Close" : <><Sparkles className="h-4 w-4 mr-2" />New Promotion</>}
+        </Button>
+      </div>
+
+      {showCreate && (
+        <Card className="border-primary/20 shadow-md">
+          <CardContent className="p-8 space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+              <div className="lg:col-span-3 space-y-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground mb-1">Create Promotion</h2>
+                  <p className="text-sm text-muted-foreground">AI generates a promotional email from your description</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Describe your promotion</label>
+                  <Textarea
+                    placeholder="Describe the promotional offer. AI already knows the recipients."
+                    rows={4}
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Recipients</label>
+                  <ContactSelect
+                    multiple
+                    selected={selectedContacts}
+                    onChange={setSelectedContacts}
+                    placeholder="Search and select contacts..."
+                  />
+                  {selectedContacts.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {selectedContacts.length} contact(s) selected
+                      {selectedContacts.length > 0 && (
+                        <> — e.g. <span className="font-medium text-foreground">
+                          {[selectedContacts[0].first_name, selectedContacts[0].last_name].filter(Boolean).join(" ") || selectedContacts[0].email}
+                        </span></>
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Attachments (optional)</label>
+                  <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} accept="image/*,.pdf,.doc,.docx,.txt" />
+                  <div className="flex flex-wrap gap-2">
+                    {files.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-card text-sm">
+                        {fileIcon(f.mime)}
+                        <span className="text-foreground truncate max-w-[120px]">{f.name}</span>
+                        <button onClick={() => removeFile(i)} className="hover:text-destructive ml-1"><X className="h-3.5 w-3.5" /></button>
+                      </div>
+                    ))}
+                    {files.length < 5 && (
+                      <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed text-sm text-muted-foreground hover:text-foreground transition-colors">
+                        <Upload className="h-4 w-4" /> Add file
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <Button
+                  onClick={generateEmail}
+                  disabled={generating || !prompt.trim() || selectedContacts.length === 0}
+                  size="lg"
+                  className="w-full"
+                >
+                  {generating ? (
+                    <><Loader2 className="h-5 w-5 mr-2 animate-spin" />Generating...</>
+                  ) : (
+                    <><Sparkles className="h-5 w-5 mr-2" />Generate Promotion</>
+                  )}
+                </Button>
+              </div>
+
+              <div className="lg:col-span-2">
+                <div className="sticky top-6">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <Eye className="h-4 w-4" /> Preview
+                  </h3>
+                  {result ? (
+                    <div className="space-y-4">
+                      <div className="p-3 rounded-lg bg-muted">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Subject</p>
+                        <p className="text-sm font-medium text-foreground">{result.subject}</p>
+                      </div>
+                      <iframe srcDoc={result.html} className="w-full h-80 rounded-lg border" title="Preview" sandbox="allow-same-origin" />
+                      <Button onClick={sendPromotion} disabled={sending} className="w-full" size="lg">
+                        {sending ? (
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending to {selectedContacts.length} contact(s)...</>
+                        ) : (
+                          <><Send className="h-4 w-4 mr-2" />Send to {selectedContacts.length} contact(s)</>
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border-2 border-dashed p-8 text-center">
+                      <Megaphone className="h-10 w-10 text-gray-300 mx-auto mb-2 dark:text-gray-600" />
+                      <p className="text-sm text-muted-foreground">
+                        {generating ? "Generating..." : "Preview will appear here"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-foreground">Past Promotions</h2>
+        {loading ? (
+          <div className="text-center py-12 text-muted-foreground">Loading...</div>
+        ) : promotions.length === 0 && !showCreate ? (
+          <Card>
+            <CardContent className="text-center py-16">
+              <Megaphone className="h-12 w-12 text-gray-300 mx-auto mb-3 dark:text-gray-600" />
+              <p className="text-muted-foreground mb-1">No promotions yet</p>
+              <Button onClick={() => setShowCreate(true)}>
+                <Sparkles className="h-4 w-4 mr-2" />Create Promotion
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {promotions.map((p: any) => (
+              <div key={p.id} className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground truncate">{p.subject}</p>
+                  <p className="text-sm text-muted-foreground truncate mt-0.5">
+                    To: {p.to} — {p.status}
+                  </p>
+                </div>
+                <span className="text-xs text-muted-foreground ml-4 whitespace-nowrap">
+                  {formatDateTime(p.sentAt)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      </div>
+    </PageTransition>
+  );
+}
