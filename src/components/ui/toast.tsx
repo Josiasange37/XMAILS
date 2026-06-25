@@ -2,7 +2,6 @@
 import * as React from "react";
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import gsap from "gsap";
 import { X, CheckCircle2, AlertCircle, Info } from "lucide-react";
 
 interface ToastItem {
@@ -26,28 +25,27 @@ function ToastCard({
   onRemove: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [exiting, setExiting] = React.useState(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    gsap.fromTo(
-      el,
-      { x: 100, opacity: 0, scale: 0.9 },
-      { x: 0, opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.7)" }
-    );
+    el.style.transform = "translateX(100px)";
+    el.style.opacity = "0";
+    requestAnimationFrame(() => {
+      el.style.transition = "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
+      el.style.transform = "translateX(0)";
+      el.style.opacity = "1";
+    });
   }, []);
 
   const handleDismiss = () => {
     const el = ref.current;
     if (!el) return;
-    gsap.to(el, {
-      x: 100,
-      opacity: 0,
-      scale: 0.9,
-      duration: 0.3,
-      ease: "power2.in",
-      onComplete: onRemove,
-    });
+    el.style.transition = "all 0.25s ease-in";
+    el.style.transform = "translateX(100px)";
+    el.style.opacity = "0";
+    setTimeout(onRemove, 250);
   };
 
   const iconMap = {
@@ -88,11 +86,13 @@ function ToastCard({
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<ToastItem[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const addToast = React.useCallback((toast: Omit<ToastItem, "id">) => {
     const id = Math.random().toString(36).slice(2);
     setToasts((prev) => [...prev, { ...toast, id }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 5000);
   }, []);
 
   const removeToast = React.useCallback((id: string) => {
@@ -102,10 +102,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
-      <div
-        ref={containerRef}
-        className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-full sm:max-w-sm"
-      >
+      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-full sm:max-w-sm">
         {toasts.map((toast) => (
           <ToastCard
             key={toast.id}
