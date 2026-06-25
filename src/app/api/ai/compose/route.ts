@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBrandSettings } from "@/lib/email-brand";
-
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+import { callAI } from "@/lib/ai";
 
 export async function POST(request: NextRequest) {
   try {
-    if (!OPENROUTER_API_KEY) {
-      return NextResponse.json(
-        { error: "OpenRouter API key not configured" },
-        { status: 500 }
-      );
-    }
-
     const { prompt, contact } = await request.json();
     if (!prompt) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
@@ -47,40 +39,14 @@ Style: clean inline CSS, responsive-friendly, max 600px width.
 
 Do NOT include any <img>, header banner, or logo — only the body content.`;
 
-    const res = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.0-flash-exp",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: prompt },
-          ],
-          max_tokens: 2000,
-          response_format: { type: "json_object" },
-        }),
-      }
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.error?.message || "OpenRouter API error");
-    }
-
-    const content = JSON.parse(data.choices?.[0]?.message?.content || "{}");
-
-    return NextResponse.json({
-      subject: content.subject || "",
-      html: content.html || "",
-      text: content.text || "",
+    const result = await callAI({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt },
+      ],
     });
+
+    return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "AI generation failed" },
