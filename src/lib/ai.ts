@@ -7,6 +7,12 @@ const OR_REFERER = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:30
 
 const PROVIDERS = [
   {
+    name: "bigmodel",
+    endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    apiKey: () => process.env.BIGMODEL_API_KEY,
+    model: "glm-4-plus",
+  },
+  {
     name: "openrouter1",
     apiKey: () => process.env.OPENROUTER_API_KEY,
     endpoint: "https://openrouter.ai/api/v1/chat/completions",
