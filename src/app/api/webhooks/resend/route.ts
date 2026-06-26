@@ -5,11 +5,17 @@ export async function POST(request: NextRequest) {
   try {
     const payload = await request.json();
 
-    await db.from("webhook_events").insert({
-      event: "inbound_email",
-      payload,
-      processed: false,
-    });
+    const { data: event, error: insertError } = await db
+      .from("webhook_events")
+      .insert({
+        event: "inbound_email",
+        payload,
+        processed: false,
+      })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
 
     const fromEmail = payload.from || payload.From || "";
     const toEmail = (payload.to || payload.To || []).join(", ");
@@ -39,8 +45,7 @@ export async function POST(request: NextRequest) {
     await db
       .from("webhook_events")
       .update({ processed: true })
-      .eq("event", "inbound_email")
-      .is("processed", false);
+      .eq("id", event.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -10,7 +10,6 @@ export async function GET() {
     const { count: contactsCount, error: contactsError } = await db
       .from("contacts")
       .select("*", { count: "exact", head: true })
-      .gte("created_at", sinceISO)
       .eq("unsubscribed", false);
 
     if (contactsError) throw contactsError;
@@ -27,7 +26,7 @@ export async function GET() {
       .from("emails")
       .select("*", { count: "exact", head: true })
       .gte("created_at", sinceISO)
-      .in("status", ["sent"]);
+      .eq("status", "delivered");
 
     if (deliveredError) throw deliveredError;
 
@@ -43,7 +42,7 @@ export async function GET() {
       .from("emails")
       .select("*", { count: "exact", head: true })
       .gte("created_at", sinceISO)
-      .eq("status", "failed");
+      .eq("status", "bounced");
 
     if (bouncedError) throw bouncedError;
 

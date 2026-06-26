@@ -17,24 +17,24 @@ export async function POST(request: NextRequest) {
     if (type === "email.delivered" && data?.email_id) {
       const { error } = await db
         .from("emails")
-        .update({ status: "delivered", delivered_at: new Date().toISOString() })
-        .eq("resend_id", data.email_id);
+        .update({ status: "delivered" })
+        .eq("tracking_id", data.email_id);
       if (error) throw error;
     }
 
     if (type === "email.opened" && data?.email_id) {
       const { error } = await db
         .from("emails")
-        .update({ status: "opened", opened_at: new Date().toISOString() })
-        .eq("resend_id", data.email_id);
+        .update({ status: "opened", opened: true })
+        .eq("tracking_id", data.email_id);
       if (error) throw error;
     }
 
     if (type === "email.clicked" && data?.email_id) {
       const { error } = await db
         .from("emails")
-        .update({ status: "clicked" })
-        .eq("resend_id", data.email_id);
+        .update({ status: "clicked", clicked: true })
+        .eq("tracking_id", data.email_id);
       if (error) throw error;
     }
 
@@ -42,15 +42,15 @@ export async function POST(request: NextRequest) {
       const { error } = await db
         .from("emails")
         .update({ status: "bounced" })
-        .eq("resend_id", data.email_id);
+        .eq("tracking_id", data.email_id);
       if (error) throw error;
     }
 
     if (type === "email.sent" && data?.email_id) {
       const { error } = await db
         .from("emails")
-        .update({ status: "sent", sent_at: new Date().toISOString() })
-        .eq("resend_id", data.email_id);
+        .update({ status: "sent" })
+        .eq("tracking_id", data.email_id);
       if (error) throw error;
     }
 
