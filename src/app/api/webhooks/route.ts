@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { verifyWebhook } from "@/lib/webhook";
 
 export async function POST(request: NextRequest) {
   try {
-    const raw = await request.text();
-    const headers: Record<string, string> = {};
-    request.headers.forEach((v, k) => { headers[k] = v; });
-
-    if (!verifyWebhook(raw, headers)) {
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-    }
-
-    const body = JSON.parse(raw);
+    const body = await request.json();
     const { type, data } = body;
 
     const { error: insertError } = await db.from("webhook_events").insert({
