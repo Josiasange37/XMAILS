@@ -6,14 +6,14 @@ const OR_REFERER = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:30
 
 const PROVIDERS = [
   {
-    name: "openrouter2",
-    apiKey: () => process.env.OPENROUTER_API_KEY_2,
-    model: "deepseek/deepseek-chat-v3-0324:free",
-  },
-  {
     name: "openrouter1",
     apiKey: () => process.env.OPENROUTER_API_KEY,
-    model: "mistralai/mistral-small-3.1-24b-instruct:free",
+    model: "meta-llama/llama-3.3-70b-instruct:free",
+  },
+  {
+    name: "openrouter2",
+    apiKey: () => process.env.OPENROUTER_API_KEY_2,
+    model: "openai/gpt-oss-120b:free",
   },
   {
     name: "groq",
@@ -23,7 +23,7 @@ const PROVIDERS = [
   },
 ];
 
-const JSON_INSTRUCTION = `You MUST respond with ONLY valid JSON. No markdown formatting, no code blocks, no explanation. Start with { and end with }. The JSON must have exactly these fields: "subject" (string), "html" (string - the email body HTML), "text" (string - plain text version).`;
+const JSON_INSTRUCTION = `First, reason step-by-step about the email content, tone, and structure. Think about what would be most effective for this recipient and context. Then respond with ONLY valid JSON. No markdown formatting, no code blocks, no explanation in the output. Start with { and end with }. The JSON must have exactly these fields: "subject" (string), "html" (string - the email body HTML), "text" (string - plain text version).`;
 
 function extractJson(raw: string): any {
   const cleaned = raw.trim();
@@ -82,15 +82,27 @@ export async function callAI({
           timeoutMs: TIMEOUT_MS,
         });
 
-        const result = await client.chat.send({
-          httpReferer: OR_REFERER(),
-          chatRequest: {
-            model: provider.model,
-            messages: msgs as any,
-            maxTokens: MAX_TOKENS,
-            responseFormat: { type: "json_object" },
-          },
-        }, { signal: combinedSignal });
+        let result: any;
+        try {
+          result = await client.chat.send({
+            httpReferer: OR_REFERER(),
+            chatRequest: {
+              model: provider.model,
+              messages: msgs as any,
+              maxTokens: MAX_TOKENS,
+              responseFormat: { type: "json_object" },
+            },
+          }, { signal: combinedSignal });
+        } catch (fetchErr: any) {
+          clearTimeout(timeout);
+          const msg = fetchErr.message || "";
+          if (msg.includes("402") || msg.includes("paid") || msg.includes("credits") || msg.includes("balance") || msg.includes("free") || msg.includes("not free") || msg.includes("payment")) {
+            lastError.push(`${provider.name}: model not free or insufficient credits`);
+            continue;
+          }
+          lastError.push(`${provider.name}: ${msg}`);
+          continue;
+        }
 
         clearTimeout(timeout);
 
