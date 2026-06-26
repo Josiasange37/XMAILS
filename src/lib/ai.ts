@@ -1,6 +1,8 @@
 const MAX_TOKENS = 4096;
 const GROQ_MAX_TOKENS = 8192;
 const TIMEOUT_MS = 15000;
+const RETRY_DELAY_MS = 1500;
+const MAX_RETRIES = 2;
 const OR_REFERER = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 const PROVIDERS = [
@@ -14,7 +16,7 @@ const PROVIDERS = [
     name: "openrouter2",
     apiKey: () => process.env.OPENROUTER_API_KEY_2,
     endpoint: "https://openrouter.ai/api/v1/chat/completions",
-    model: "google/gemini-2.0-flash-exp:free",
+    model: "mistralai/mistral-small-3.1-24b-instruct:free",
   },
   {
     name: "groq",
@@ -83,18 +85,29 @@ async function fetchCompletion(
   maxTokens: number,
   signal: AbortSignal,
 ): Promise<string> {
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: maxTokens,
-    }),
-    signal,
-  });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    }
 
-  if (!res.ok) {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        messages,
+        max_tokens: maxTokens,
+      }),
+      signal,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const raw = data.choices?.[0]?.message?.content;
+      if (!raw) throw new Error("empty response");
+      return raw;
+    }
+
     const body = await res.text().catch(() => "");
     let detail: string;
     try {
@@ -103,13 +116,12 @@ async function fetchCompletion(
     } catch {
       detail = body.slice(0, 200) || `HTTP ${res.status}`;
     }
+
+    if (res.status === 429 && attempt < MAX_RETRIES) continue;
     throw new Error(`HTTP ${res.status}: ${detail}`);
   }
 
-  const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content;
-  if (!raw) throw new Error("empty response");
-  return raw;
+  throw new Error("max retries exceeded");
 }
 
 export async function callAI({
