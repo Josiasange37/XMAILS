@@ -1,6 +1,6 @@
 import { OpenRouter } from "@openrouter/sdk";
 
-const MAX_TOKENS = 2000;
+const MAX_TOKENS = 4096;
 const TIMEOUT_MS = 15000;
 const OR_REFERER = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -13,7 +13,7 @@ const PROVIDERS = [
   {
     name: "openrouter2",
     apiKey: () => process.env.OPENROUTER_API_KEY_2,
-    model: "openai/gpt-oss-120b:free",
+    model: "qwen/qwen-2.5-72b-instruct:free",
   },
   {
     name: "groq",
@@ -32,6 +32,16 @@ function extractJson(raw: string): any {
   if (jsonMatch) { try { return JSON.parse(jsonMatch[0]); } catch {} }
   const noTicks = cleaned.replace(/```json\s*/gi, "").replace(/```\s*$/g, "").replace(/`/g, "").trim();
   try { return JSON.parse(noTicks); } catch {}
+  const partialMatch = cleaned.match(/\{(?:[^{}]|(?:\{[^{}]*\}))*\}/);
+  if (partialMatch) { try { return JSON.parse(partialMatch[0]); } catch {} }
+  const lastBrace = cleaned.lastIndexOf("{");
+  if (lastBrace !== -1) {
+    const partial = cleaned.slice(lastBrace);
+    const repaired = partial + '" }';
+    try { return JSON.parse(repaired); } catch {}
+    const repaired2 = partial.replace(/["\s]*$/, '"}');
+    try { return JSON.parse(repaired2); } catch {}
+  }
   throw new Error("Could not extract valid JSON from response");
 }
 
@@ -96,11 +106,12 @@ export async function callAI({
         } catch (fetchErr: any) {
           clearTimeout(timeout);
           const msg = fetchErr.message || "";
+          const detail = fetchErr.status ? ` (HTTP ${fetchErr.status})` : "";
           if (msg.includes("402") || msg.includes("paid") || msg.includes("credits") || msg.includes("balance") || msg.includes("free") || msg.includes("not free") || msg.includes("payment")) {
             lastError.push(`${provider.name}: model not free or insufficient credits`);
             continue;
           }
-          lastError.push(`${provider.name}: ${msg}`);
+          lastError.push(`${provider.name}: ${msg}${detail}`);
           continue;
         }
 
