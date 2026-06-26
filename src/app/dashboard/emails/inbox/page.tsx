@@ -54,9 +54,17 @@ export default function InboxPage() {
   const fetchEmails = () => {
     setLoading(true);
     fetch("/api/inbox")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
       .then((data) => {
+        console.log("inbox data:", data);
         setEmails(data.emails || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("inbox fetch error:", err);
         setLoading(false);
       });
   };
