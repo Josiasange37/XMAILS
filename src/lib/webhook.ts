@@ -14,8 +14,10 @@ export function verifyWebhook(
   if (!svixId || !svixTimestamp || !svixSignature) return false;
 
   const signedContent = `${svixId}.${svixTimestamp}.${payload}`;
+  const raw = secret.startsWith("whsec_") ? secret.slice(6) : secret;
+  const key = Buffer.from(raw, "base64");
   const expected = crypto
-    .createHmac("sha256", secret)
+    .createHmac("sha256", key)
     .update(signedContent)
     .digest("base64");
 
