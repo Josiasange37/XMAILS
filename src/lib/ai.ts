@@ -1,17 +1,11 @@
 const MAX_TOKENS = 4096;
 const GROQ_MAX_TOKENS = 8192;
-const PER_ATTEMPT_TIMEOUT_MS = 15000;
-const MAX_TOTAL_TIMEOUT_MS = 45000;
-const MAX_RETRIES = 3;
+const PER_ATTEMPT_TIMEOUT_MS = 25000;
+const MAX_TOTAL_TIMEOUT_MS = 65000;
+const MAX_RETRIES = 2;
 const OR_REFERER = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 const PROVIDERS = [
-  {
-    name: "bigmodel",
-    endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-    apiKey: () => process.env.BIGMODEL_API_KEY,
-    model: "glm-4-plus",
-  },
   {
     name: "openrouter1",
     apiKey: () => process.env.OPENROUTER_API_KEY,
@@ -29,6 +23,12 @@ const PROVIDERS = [
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     apiKey: () => process.env.GROQ_API_KEY,
     model: "llama-3.3-70b-versatile",
+  },
+  {
+    name: "bigmodel",
+    endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    apiKey: () => process.env.BIGMODEL_API_KEY,
+    model: "glm-4-plus",
   },
 ];
 

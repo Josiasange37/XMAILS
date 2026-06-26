@@ -85,7 +85,7 @@ export default function BroadcastsPage() {
     const fullPrompt = sampleContext + prompt.trim();
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000);
+      const timeout = setTimeout(() => controller.abort(), 90000);
       const res = await fetch("/api/ai/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
