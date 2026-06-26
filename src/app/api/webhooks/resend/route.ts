@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = JSON.parse(raw);
+    const d = payload.data || payload;
 
     const { data: event, error: insertError } = await db
       .from("webhook_events")
@@ -26,12 +27,12 @@ export async function POST(request: NextRequest) {
 
     if (insertError) throw insertError;
 
-    const fromEmail = payload.from || payload.From || "";
-    const toEmail = (payload.to || payload.To || []).join(", ");
-    const subject = payload.subject || payload.Subject || "";
-    const html = payload.html || payload.Html || "";
-    const text = payload.text || payload.Text || "";
-    const rawAttachments = payload.attachments || payload.Attachments || [];
+    const fromEmail = d.from || d.From || "";
+    const toEmail = (d.to || d.To || []).join(", ");
+    const subject = d.subject || d.Subject || "";
+    const html = d.html || d.Html || "";
+    const text = d.text || d.Text || "";
+    const rawAttachments = d.attachments || d.Attachments || [];
 
     const attachments = rawAttachments.map((att: any) => ({
       filename: att.filename || att.Filename || "attachment",

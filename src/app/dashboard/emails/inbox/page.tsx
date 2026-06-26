@@ -59,11 +59,6 @@ export default function InboxPage() {
         return r.json();
       })
       .then((data) => {
-        console.log("inbox data:", data);
-        if (data.emails && data.emails.length > 0) {
-          console.log("first email keys:", Object.keys(data.emails[0]));
-          console.log("first email:", JSON.stringify(data.emails[0], null, 2));
-        }
         setEmails(data.emails || []);
         setLoading(false);
       })
