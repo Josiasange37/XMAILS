@@ -1,6 +1,4 @@
 /** @type {import("next").NextConfig} */
-const nextConfig = {
-  serverExternalPackages: ["@openrouter/sdk"],
-};
+const nextConfig = {};
 
 export default nextConfig;

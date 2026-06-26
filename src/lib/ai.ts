@@ -1,6 +1,5 @@
-import { OpenRouter } from "@openrouter/sdk";
-
 const MAX_TOKENS = 4096;
+const GROQ_MAX_TOKENS = 8192;
 const TIMEOUT_MS = 15000;
 const OR_REFERER = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -8,12 +7,14 @@ const PROVIDERS = [
   {
     name: "openrouter1",
     apiKey: () => process.env.OPENROUTER_API_KEY,
+    endpoint: "https://openrouter.ai/api/v1/chat/completions",
     model: "meta-llama/llama-3.3-70b-instruct:free",
   },
   {
     name: "openrouter2",
     apiKey: () => process.env.OPENROUTER_API_KEY_2,
-    model: "qwen/qwen-2.5-72b-instruct:free",
+    endpoint: "https://openrouter.ai/api/v1/chat/completions",
+    model: "google/gemini-2.0-flash-exp:free",
   },
   {
     name: "groq",
@@ -23,7 +24,7 @@ const PROVIDERS = [
   },
 ];
 
-const JSON_INSTRUCTION = `First, reason step-by-step about the email content, tone, and structure. Think about what would be most effective for this recipient and context. Then respond with ONLY valid JSON. No markdown formatting, no code blocks, no explanation in the output. Start with { and end with }. The JSON must have exactly these fields: "subject" (string), "html" (string - the email body HTML), "text" (string - plain text version).`;
+const JSON_INSTRUCTION = `Respond with ONLY valid JSON. Think carefully, but output ONLY the JSON. No markdown, no code blocks, no explanations, no reasoning text. Start with { and end with }. The JSON must have exactly these fields: "subject" (string), "html" (string - email body HTML), "text" (string - plain text version).`;
 
 function extractJson(raw: string): any {
   const cleaned = raw.trim();
@@ -58,6 +59,59 @@ function appendJsonInstruction(msg: { role: string; content: string | any[] }) {
   }
 }
 
+function openRouterHeaders(apiKey: string) {
+  return {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    "HTTP-Referer": OR_REFERER(),
+    "X-Title": "Xyberclan",
+  };
+}
+
+function groqHeaders(apiKey: string) {
+  return {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+  };
+}
+
+async function fetchCompletion(
+  endpoint: string,
+  headers: Record<string, string>,
+  model: string,
+  messages: any[],
+  maxTokens: number,
+  signal: AbortSignal,
+): Promise<string> {
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model,
+      messages,
+      max_tokens: maxTokens,
+    }),
+    signal,
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    let detail: string;
+    try {
+      const json = JSON.parse(body);
+      detail = json.error?.message || json.error || JSON.stringify(json).slice(0, 200);
+    } catch {
+      detail = body.slice(0, 200) || `HTTP ${res.status}`;
+    }
+    throw new Error(`HTTP ${res.status}: ${detail}`);
+  }
+
+  const data = await res.json();
+  const raw = data.choices?.[0]?.message?.content;
+  if (!raw) throw new Error("empty response");
+  return raw;
+}
+
 export async function callAI({
   messages,
   signal: outerSignal,
@@ -84,80 +138,21 @@ export async function callAI({
       const msgs = structuredClone(messages);
       appendJsonInstruction(msgs[msgs.length - 1]);
 
-      let raw: string;
+      const maxTokens = provider.name === "groq" ? GROQ_MAX_TOKENS : MAX_TOKENS;
+      const headers = provider.name.startsWith("openrouter")
+        ? openRouterHeaders(apiKey)
+        : groqHeaders(apiKey);
 
-      if (provider.name.startsWith("openrouter")) {
-        const client = new OpenRouter({
-          apiKey,
-          timeoutMs: TIMEOUT_MS,
-        });
+      const raw = await fetchCompletion(
+        provider.endpoint,
+        headers,
+        provider.model,
+        msgs,
+        maxTokens,
+        combinedSignal,
+      );
 
-        let result: any;
-        try {
-          result = await client.chat.send({
-            httpReferer: OR_REFERER(),
-            chatRequest: {
-              model: provider.model,
-              messages: msgs as any,
-              maxTokens: MAX_TOKENS,
-              responseFormat: { type: "json_object" },
-            },
-          }, { signal: combinedSignal });
-        } catch (fetchErr: any) {
-          clearTimeout(timeout);
-          const msg = fetchErr.message || "";
-          const detail = fetchErr.status ? ` (HTTP ${fetchErr.status})` : "";
-          if (msg.includes("402") || msg.includes("paid") || msg.includes("credits") || msg.includes("balance") || msg.includes("free") || msg.includes("not free") || msg.includes("payment")) {
-            lastError.push(`${provider.name}: model not free or insufficient credits`);
-            continue;
-          }
-          lastError.push(`${provider.name}: ${msg}${detail}`);
-          continue;
-        }
-
-        clearTimeout(timeout);
-
-        const choice = (result as any).choices?.[0];
-        raw = choice?.message?.content ?? "";
-        if (!raw) {
-          lastError.push(`${provider.name}: empty response`);
-          continue;
-        }
-      } else {
-        const res = await fetch(provider.endpoint!, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: provider.model,
-            messages: msgs,
-            max_tokens: MAX_TOKENS,
-          }),
-          signal: combinedSignal,
-        });
-
-        clearTimeout(timeout);
-
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}));
-          const errMsg = typeof errorData?.error?.message === "string"
-            ? errorData.error.message
-            : typeof errorData?.error === "string"
-              ? errorData.error
-              : `HTTP ${res.status}`;
-          lastError.push(`${provider.name} (${res.status}): ${errMsg}`);
-          continue;
-        }
-
-        const data = await res.json();
-        raw = data.choices?.[0]?.message?.content;
-        if (!raw) {
-          lastError.push(`${provider.name}: empty response`);
-          continue;
-        }
-      }
+      clearTimeout(timeout);
 
       let parsed: any;
       try {
