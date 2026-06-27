@@ -1,88 +1,86 @@
 "use client";
 import { PageTransition } from "@/components/page-transition";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Mail, Plus, TrendingUp, TrendingDown, Users, Send, Eye, AlertTriangle, Megaphone, FileText, Zap, Upload, Edit, BarChart3, Circle } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Users, Send, Eye, AlertTriangle, Megaphone, FileText, Zap, Upload, Edit, BarChart3, Circle, Mail, Activity } from "lucide-react";
 import {
-  LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area,
 } from "recharts";
 
-interface OverviewStats {
-  totalContacts: number;
-  totalSent: number;
-  totalDelivered: number;
-  totalOpened: number;
-  totalBounced: number;
-  openRate: number;
-  bounceRate: number;
+interface TimelineDay {
+  day: string;
+  Sent: number;
+  Delivered: number;
+  Opened: number;
+  Bounced: number;
+  "Open Rate": number;
+  "Bounce Rate": number;
 }
 
-const campaignData = [
-  { day: "Feb 7", Revenue: 2400, "Click Rate": 2.4, Unsubscribes: 0.1 },
-  { day: "Feb 8", Revenue: 1398, "Click Rate": 3.2, Unsubscribes: 0.2 },
-  { day: "Feb 9", Revenue: 9800, "Click Rate": 4.1, Unsubscribes: 0.05 },
-  { day: "Feb 10", Revenue: 3908, "Click Rate": 3.8, Unsubscribes: 0.3 },
-  { day: "Feb 11", Revenue: 4800, "Click Rate": 2.9, Unsubscribes: 0.15 },
-  { day: "Feb 12", Revenue: 3800, "Click Rate": 5.0, Unsubscribes: 0.08 },
-  { day: "Feb 13", Revenue: 4300, "Click Rate": 4.3, Unsubscribes: 0.12 },
-];
-
 export default function DashboardPage() {
-  const [stats, setStats] = useState<OverviewStats | null>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [timeline, setTimeline] = useState<TimelineDay[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/analytics/overview")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.error) setStats(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch("/api/analytics/overview").then((r) => r.json()).catch(() => ({})),
+      fetch("/api/analytics/timeline").then((r) => r.json()).catch(() => ({ timeline: [] })),
+    ]).then(([overview, tl]) => {
+      if (!overview.error) setStats(overview);
+      if (!tl.error && tl.timeline) setTimeline(tl.timeline);
+      setLoading(false);
+    });
   }, []);
 
-  const sentDisplay = stats?.totalSent ? (stats.totalSent >= 1000 ? `${(stats.totalSent / 1000).toFixed(1)}k` : String(stats.totalSent)) : "0";
-  const newSubsDisplay = stats?.totalContacts ? `+${stats.totalContacts}` : "+0";
+  const hasData = stats?.totalSent > 0;
+  const sentDisplay = stats?.totalSent
+    ? (stats.totalSent >= 1000 ? `${(stats.totalSent / 1000).toFixed(1)}k` : String(stats.totalSent))
+    : "0";
+
+  const openRateDisplay = hasData ? `${stats.openRate}%` : "—";
+  const bounceRateDisplay = hasData ? `${stats.bounceRate}%` : "—";
+  const deliverabilityScore = hasData && stats.totalSent > 0
+    ? Math.round((stats.totalDelivered / stats.totalSent) * 100)
+    : null;
 
   const statCards = [
     {
       title: "Emails Sent",
-      metric: loading ? "..." : sentDisplay,
-      trend: { direction: "up" as const, percentage: "+6.3%" },
-      color: "green",
+      metric: sentDisplay,
       icon: Send,
+      color: "green",
+    },
+    {
+      title: "Delivered",
+      metric: hasData ? String(stats.totalDelivered) : "—",
+      icon: Mail,
+      color: "green",
     },
     {
       title: "Open Rate",
-      metric: loading ? "..." : `${stats?.openRate ?? 0}%`,
-      trend: { direction: (stats?.openRate ?? 0) > 0 ? ("up" as const) : ("down" as const), percentage: stats && stats.openRate > 30 ? `+${stats.openRate.toFixed(1)}%` : "-27%" },
-      color: (stats?.openRate ?? 0) > 30 ? "green" : "red",
+      metric: openRateDisplay,
       icon: Eye,
-    },
-    {
-      title: "New Subscribers",
-      metric: loading ? "..." : newSubsDisplay,
-      trend: { direction: "up" as const, percentage: "+12%" },
-      color: "green",
-      icon: Users,
+      color: hasData && stats.openRate > 30 ? "green" : "muted",
     },
     {
       title: "Bounce Rate",
-      metric: loading ? "..." : `${stats?.bounceRate ?? 0}%`,
-      trend: { direction: (stats?.bounceRate ?? 0) > 0 ? ("down" as const) : ("up" as const), percentage: stats && stats.bounceRate > 0 ? `+${stats.bounceRate.toFixed(1)}%` : "0%" },
-      color: (stats?.bounceRate ?? 0) > 5 ? "red" : "green",
+      metric: bounceRateDisplay,
       icon: AlertTriangle,
+      color: hasData && stats.bounceRate > 5 ? "red" : "muted",
     },
   ];
 
   const quickActions = [
-    { label: "Create Campaign", icon: Plus },
-    { label: "Import Contacts", icon: Upload },
-    { label: "Design Template", icon: Edit },
-    { label: "View Reports", icon: BarChart3 },
+    { label: "Create Campaign", icon: Megaphone, href: "/dashboard/broadcasts" },
+    { label: "Import Contacts", icon: Upload, href: "/dashboard/contacts" },
+    { label: "Design Template", icon: Edit, href: "/dashboard/templates" },
+    { label: "View Reports", icon: BarChart3, href: "/dashboard/analytics" },
   ];
+
+  const totalWeekly = useMemo(() => timeline.reduce((s, d) => s + d.Sent, 0), [timeline]);
 
   return (
     <PageTransition>
@@ -100,170 +98,106 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Top row: Quick actions + stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Quick actions</CardTitle>
-            <p className="text-xs text-muted-foreground">You can quick action at a time.</p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2">
-              {quickActions.map((a) => (
-                <Button key={a.label} variant="outline" size="sm" className="justify-start h-auto py-2 px-3 text-xs">
-                  <a.icon className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                  {a.label}
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card) => (
           <Card key={card.title}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">{card.title}</p>
-                  <p className="text-2xl font-bold">{card.metric}</p>
-                  <div className={`flex items-center gap-1 text-xs ${card.color === "green" ? "text-green-600" : "text-red-500"}`}>
-                    {card.trend.direction === "up" ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    <span>{card.trend.percentage}</span>
-                  </div>
-                </div>
-                <div className={`p-2.5 rounded-xl ${card.color === "green" ? "bg-green-50" : "bg-red-50"}`}>
-                  <card.icon className={`h-5 w-5 ${card.color === "green" ? "text-green-600" : "text-red-500"}`} />
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">{card.title}</p>
+                <div className={`p-2 rounded-lg ${card.color === "green" ? "bg-green-50" : card.color === "red" ? "bg-red-50" : "bg-muted"}`}>
+                  <card.icon className={`h-4 w-4 ${card.color === "green" ? "text-green-600" : card.color === "red" ? "text-red-500" : "text-muted-foreground"}`} />
                 </div>
               </div>
-              {/* Mini sparkline area */}
-              <div className="mt-3 h-8">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={campaignData}>
-                    <defs>
-                      <linearGradient id={`grad-${card.title}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={card.color === "green" ? "#22c55e" : "#ef4444"} stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor={card.color === "green" ? "#22c55e" : "#ef4444"} stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <Area type="monotone" dataKey="Revenue" stroke={card.color === "green" ? "#22c55e" : "#ef4444"} fillOpacity={1} fill={`url(#grad-${card.title})`} strokeWidth={1.5} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              <p className="text-2xl font-bold mt-2">{loading ? "..." : card.metric}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Middle row: Campaign Performance line chart */}
+      {/* Campaign Performance chart */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Campaign Performance</CardTitle>
-            <p className="text-sm text-muted-foreground mt-0.5">Monitor how your latest sends are performing in real time.</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {hasData ? `${totalWeekly} emails sent in the last 7 days` : "Send your first email to see performance data."}
+            </p>
           </div>
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">Last 07 days</span>
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">Last 7 days</span>
         </CardHeader>
         <CardContent>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={campaignData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis yAxisId="left" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                />
-                <Line yAxisId="left" type="monotone" dataKey="Revenue" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="Revenue" />
-                <Line yAxisId="right" type="monotone" dataKey="Click Rate" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} name="Click Rate" />
-                <Line yAxisId="right" type="monotone" dataKey="Unsubscribes" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Unsubscribes" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {timeline.length === 0 || !hasData ? (
+            <div className="h-56 flex flex-col items-center justify-center text-muted-foreground">
+              <Activity className="h-10 w-10 mb-2 text-gray-300" />
+              <p className="text-sm">No campaign data yet</p>
+              <p className="text-xs mt-1">Emails you send will appear here.</p>
+            </div>
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={timeline}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Bar dataKey="Sent" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Sent" />
+                  <Bar dataKey="Delivered" fill="#22c55e" radius={[3, 3, 0, 0]} name="Delivered" />
+                  <Bar dataKey="Opened" fill="#a855f7" radius={[3, 3, 0, 0]} name="Opened" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Bottom row: 4 widgets */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Active Automations */}
+      {/* Bottom row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Quick links */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Active Automations</CardTitle>
-            <p className="text-xs text-muted-foreground">Automated journeys working behind the scenes.</p>
+            <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>Welcome Series</span>
-                <span className="font-medium">54%</span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full" style={{ width: "54%" }} />
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">3 step email</p>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>Re-Engagement Flow</span>
-                <span className="font-medium">27%</span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-orange-400 rounded-full" style={{ width: "27%" }} />
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">Open rate</p>
-            </div>
-            <Button variant="outline" size="sm" className="w-full text-xs">Manage Automations</Button>
+          <CardContent className="space-y-2">
+            {quickActions.map((a) => (
+              <Link key={a.label} href={a.href}>
+                <Button variant="outline" size="sm" className="w-full justify-start text-xs h-8">
+                  <a.icon className="h-3.5 w-3.5 mr-2 shrink-0" />
+                  {a.label}
+                </Button>
+              </Link>
+            ))}
           </CardContent>
         </Card>
 
-        {/* Reputation Score gauge */}
+        {/* Deliverability */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Reputation Score</CardTitle>
-            <p className="text-xs text-muted-foreground">See your details reputation score.</p>
+            <CardTitle className="text-sm font-medium">Deliverability</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center">
-              <div className="relative w-28 h-14 overflow-hidden">
-                <svg viewBox="0 0 120 60" className="w-28 h-14">
-                  <defs>
-                    <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#ef4444" />
-                      <stop offset="50%" stopColor="#eab308" />
-                      <stop offset="100%" stopColor="#22c55e" />
-                    </linearGradient>
-                  </defs>
-                  <path d="M10 55 A 50 50 0 0 1 110 55" fill="none" stroke="hsl(var(--border))" strokeWidth="8" strokeLinecap="round" />
-                  <path d="M10 55 A 50 50 0 0 1 110 55" fill="none" stroke="url(#gaugeGrad)" strokeWidth="8" strokeLinecap="round" strokeDasharray="282.7" strokeDashoffset="56.5" />
-                  <line x1="60" y1="55" x2="88" y2="20" stroke="#22c55e" strokeWidth="2" />
-                  <circle cx="88" cy="20" r="3" fill="#22c55e" />
-                </svg>
-              </div>
-              <p className="text-2xl font-bold mt-1">{stats?.openRate ? `${Math.round(stats.openRate)}%` : "85.2%"}</p>
-              <p className="text-xs text-green-600 font-medium">Good!</p>
-              <p className="text-[10px] text-muted-foreground text-center mt-2 leading-tight">
-                Reputation Score are auto generate based on recent engagements.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Deliverability Score */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Deliverability Score</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-1 mb-3">
-              <span className="text-2xl font-bold">{stats?.totalDelivered && stats?.totalSent ? Math.round((stats.totalDelivered / stats.totalSent) * 100) : 82}</span>
-              <span className="text-sm text-muted-foreground">/100</span>
-            </div>
-            <p className="text-xs text-green-600 mb-3">Your inbox placement is healthy.</p>
+            {deliverabilityScore !== null ? (
+              <>
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span className="text-2xl font-bold">{deliverabilityScore}</span>
+                  <span className="text-sm text-muted-foreground">/100</span>
+                </div>
+                <p className="text-xs text-green-600 mb-3">
+                  {deliverabilityScore >= 80 ? "Your inbox placement is healthy." :
+                   deliverabilityScore >= 50 ? "Room for improvement." :
+                   "Needs attention."}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground mb-3">No data yet</p>
+            )}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
@@ -274,10 +208,10 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
-                  <Circle className="h-2 w-2 fill-orange-400 text-orange-400" />
+                  <Circle className={`h-2 w-2 ${hasData && stats.bounceRate > 5 ? "fill-orange-400 text-orange-400" : "fill-green-500 text-green-500"}`} />
                   <span>Bounce rate</span>
                 </div>
-                <span className="font-medium">{stats?.bounceRate ? `${stats.bounceRate.toFixed(1)}%` : "Stable"}</span>
+                <span className="font-medium">{hasData ? `${stats.bounceRate}%` : "—"}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
@@ -290,23 +224,71 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Schedule Campaign timeline */}
+        {/* Weekly trend */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Schedule Campaign</CardTitle>
+            <CardTitle className="text-sm font-medium">Weekly Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground mb-4">7 Feb 2024 - 10 Feb 2024</p>
-            <div className="space-y-4">
-              <div className="relative pl-5 border-l-2 border-blue-500">
-                <div className="absolute left-[-5px] top-1 w-2 h-2 rounded-full bg-blue-500" />
-                <p className="text-[10px] text-muted-foreground">Today — 07:00 - 11:00 AM</p>
-                <p className="text-sm font-medium">Winter Sale Launch</p>
+            {timeline.length > 0 && hasData ? (
+              <>
+                <div className="h-20">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={timeline}>
+                      <defs>
+                        <linearGradient id="weeklyGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="Sent" stroke="#3b82f6" fill="url(#weeklyGrad)" strokeWidth={2} dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Total sent</span>
+                    <span className="font-medium">{totalWeekly}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Avg per day</span>
+                    <span className="font-medium">{Math.round(totalWeekly / timeline.length)}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="h-20 flex items-center justify-center text-muted-foreground text-xs">
+                No data yet
               </div>
-              <div className="relative pl-5 border-l-2 border-orange-400">
-                <div className="absolute left-[-5px] top-1 w-2 h-2 rounded-full bg-orange-400" />
-                <p className="text-[10px] text-muted-foreground">Sun 8 February — 08:00 - 12:00 AM</p>
-                <p className="text-sm font-medium">New Arrivals Announcement</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Status */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">System Status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Circle className="h-2.5 w-2.5 fill-green-500 text-green-500 shrink-0" />
+              <div className="text-xs">
+                <p className="font-medium">Email Service</p>
+                <p className="text-muted-foreground">Operational</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Circle className="h-2.5 w-2.5 fill-green-500 text-green-500 shrink-0" />
+              <div className="text-xs">
+                <p className="font-medium">API</p>
+                <p className="text-muted-foreground">All systems normal</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Circle className="h-2.5 w-2.5 fill-green-500 text-green-500 shrink-0" />
+              <div className="text-xs">
+                <p className="font-medium">Domain</p>
+                <p className="text-muted-foreground">xyberclan.dev verified</p>
               </div>
             </div>
           </CardContent>
