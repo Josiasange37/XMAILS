@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const { data, error } = await db
       .from("inbound_emails")
       .select("*")
       .order("received_at", { ascending: false })
-      .limit(100);
+      .limit(200);
 
     if (error) throw error;
 
