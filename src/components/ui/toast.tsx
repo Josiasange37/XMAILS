@@ -9,6 +9,7 @@ interface ToastItem {
   title: string;
   description?: string;
   variant?: "default" | "success" | "destructive";
+  undo?: () => void;
 }
 
 const ToastContext = React.createContext<{
@@ -73,6 +74,14 @@ function ToastCard({
         {toast.description && (
           <p className="text-xs mt-0.5 opacity-80">{toast.description}</p>
         )}
+        {toast.undo && (
+          <button
+            onClick={() => { toast.undo!(); onRemove(); }}
+            className="mt-1 text-xs font-semibold underline underline-offset-2 hover:opacity-80"
+          >
+            Undo
+          </button>
+        )}
       </div>
       <button
         onClick={handleDismiss}
@@ -90,9 +99,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const addToast = React.useCallback((toast: Omit<ToastItem, "id">) => {
     const id = Math.random().toString(36).slice(2);
     setToasts((prev) => [...prev, { ...toast, id }]);
+    const delay = toast.undo ? 8000 : 5000;
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 5000);
+    }, delay);
   }, []);
 
   const removeToast = React.useCallback((id: string) => {

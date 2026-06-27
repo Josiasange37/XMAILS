@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import Link from "next/link";
 
 export default function ComposeEmailPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -21,6 +22,18 @@ export default function ComposeEmailPage() {
     html: "",
     text: "",
   });
+
+  useEffect(() => {
+    const to = searchParams.get("to");
+    const subject = searchParams.get("subject");
+    if (to || subject) {
+      setForm((prev) => ({
+        ...prev,
+        to: to || prev.to,
+        subject: subject || prev.subject,
+      }));
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

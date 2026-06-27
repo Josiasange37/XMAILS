@@ -1,16 +1,17 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { StatCardSkeleton, ChartSkeleton } from "@/components/ui/skeleton";
 import {
   Mail, Send, Eye, AlertTriangle, Users, TrendingUp, MousePointerClick,
-  BarChart3, PieChart, Activity, Target, ArrowUpRight, ArrowDownRight,
-  Clock, Inbox, Smartphone, Monitor, Globe, Hash, CheckCircle2, XCircle,
-  Download, TrendingDown, Percent,
+  BarChart3, PieChart, Activity, Target, CheckCircle2, XCircle,
+  Download, Percent, Hash,
 } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart as RePieChart, Pie, Cell, Legend,
+  PieChart as RePieChart, Pie, Cell,
 } from "recharts";
 
 const COLORS = ["#3b82f6", "#22c55e", "#a855f7", "#ef4444", "#eab308", "#f97316", "#06b6d4"];
@@ -19,7 +20,6 @@ function fmt(n: number | undefined | null): string {
   if (n == null) return "—";
   return n.toLocaleString();
 }
-
 function pct(n: number | undefined | null): string {
   if (n == null || n === 0) return "—";
   return `${n}%`;
@@ -28,13 +28,22 @@ function pct(n: number | undefined | null): string {
 export default function AnalyticsPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(null);
     fetch("/api/analytics/detailed")
       .then((r) => r.json())
-      .then((d) => { if (!d.error) setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
+      .then((d) => {
+        if (d.error) { setError(d.error); setData(null); }
+        else setData(d);
+        setLoading(false);
+      })
+      .catch(() => { setError("Failed to load analytics"); setLoading(false); });
+  };
+
+  useEffect(() => { load(); }, []);
 
   const hasData = data?.totals?.total > 0;
   const t = data?.totals;
@@ -59,17 +68,8 @@ export default function AnalyticsPage() {
     ].filter((d) => d.value > 0);
   }, [t]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Activity className="h-8 w-8 animate-pulse text-muted-foreground" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
@@ -81,78 +81,37 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {error && !loading && <ErrorBanner message={error} onRetry={load} />}
+
+      {/* 7 KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total Sent</p>
-            <p className="text-xl font-bold mt-0.5">{fmt(t?.sent)}</p>
-            <div className="flex items-center gap-1 mt-1 text-[10px] text-green-600">
-              <Mail className="h-3 w-3" />
-              <span>all time</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Delivered</p>
-            <p className="text-xl font-bold mt-0.5 text-green-600">{fmt(t?.delivered)}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              {pct(r?.deliveryRate)} delivery rate
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Opened</p>
-            <p className="text-xl font-bold mt-0.5 text-purple-600">{fmt(t?.opened)}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              {pct(r?.openRate)} open rate
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Clicked</p>
-            <p className="text-xl font-bold mt-0.5 text-blue-600">{fmt(t?.clicked)}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              {pct(r?.clickRate)} click rate
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Bounced</p>
-            <p className="text-xl font-bold mt-0.5 text-red-500">{fmt(t?.bounced)}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              {pct(r?.bounceRate)} bounce rate
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Contacts</p>
-            <p className="text-xl font-bold mt-0.5">{fmt(data?.contacts)}</p>
-            <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
-              <Users className="h-3 w-3" />
-              <span>in database</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">This Week</p>
-            <p className="text-xl font-bold mt-0.5">{fmt(data?.week?.sent)}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              ~{data?.week?.avgPerDay || 0}/day avg
-            </p>
-          </CardContent>
-        </Card>
+        {loading ? (
+          Array.from({ length: 7 }).map((_, i) => <Card key={i}><StatCardSkeleton /></Card>)
+        ) : (
+          <>
+            {[
+              ["Total Sent", fmt(t?.sent), Mail, "text-muted-foreground"],
+              ["Delivered", fmt(t?.delivered), CheckCircle2, "text-green-600"],
+              ["Opened", fmt(t?.opened), Eye, "text-purple-600"],
+              ["Clicked", fmt(t?.clicked), MousePointerClick, "text-blue-600"],
+              ["Bounced", fmt(t?.bounced), XCircle, "text-red-500"],
+              ["Contacts", fmt(data?.contacts), Users, "text-muted-foreground"],
+              ["This Week", fmt(data?.week?.sent), Activity, "text-indigo-500"],
+            ].map(([label, value, Icon, color]) => (
+              <Card key={label as string}>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground">{label as string}</p>
+                  <p className="text-xl font-bold mt-0.5">{value as string}</p>
+                  <Icon className={`h-3 w-3 mt-1 ${color as string}`} />
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        )}
       </div>
 
-      {/* Charts Row 1: Timeline + Delivery Pie */}
+      {/* Row 1: Timeline + Delivery pie */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Daily timeline bar chart */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -161,10 +120,8 @@ export default function AnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {timeline.length === 0 || !hasData ? (
-              <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">
-                No data yet
-              </div>
+            {loading ? <ChartSkeleton /> : timeline.length === 0 || !hasData ? (
+              <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
             ) : (
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
@@ -172,14 +129,7 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "6px",
-                        fontSize: "11px",
-                      }}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px" }} />
                     <Bar dataKey="sent" fill="#3b82f6" radius={[2, 2, 0, 0]} name="Sent" stackId="a" />
                     <Bar dataKey="delivered" fill="#22c55e" radius={[2, 2, 0, 0]} name="Delivered" stackId="a" />
                     <Bar dataKey="bounced" fill="#ef4444" radius={[2, 2, 0, 0]} name="Bounced" stackId="a" />
@@ -190,7 +140,6 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        {/* Delivery breakdown pie */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -199,54 +148,36 @@ export default function AnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {deliveryPie.length === 0 ? (
-              <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
-                No data
-              </div>
+            {loading ? <ChartSkeleton /> : deliveryPie.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No data</div>
             ) : (
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RePieChart>
-                    <Pie
-                      data={deliveryPie}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={65}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {deliveryPie.map((_, i) => (
-                        <Cell key={i} fill={[COLORS[1], COLORS[3], COLORS[4]][i]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "6px",
-                        fontSize: "11px",
-                      }}
-                    />
-                  </RePieChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-            <div className="flex justify-center gap-4 text-xs text-muted-foreground mt-1">
-              {deliveryPie.map((d, i) => (
-                <div key={d.name} className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: [COLORS[1], COLORS[3], COLORS[4]][i] }} />
-                  {d.name}
+              <>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RePieChart>
+                      <Pie data={deliveryPie} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={3} dataKey="value">
+                        {deliveryPie.map((_, i) => <Cell key={i} fill={[COLORS[1], COLORS[3], COLORS[4]][i]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px" }} />
+                    </RePieChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
+                <div className="flex justify-center gap-4 text-xs text-muted-foreground mt-1">
+                  {deliveryPie.map((d, i) => (
+                    <div key={d.name} className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: [COLORS[1], COLORS[3], COLORS[4]][i] }} />
+                      {d.name}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Row 2: Open/Click rates + Engagement funnel */}
+      {/* Row 2: Engagement rate trend + Funnel */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Open & Click Rate line chart */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -255,10 +186,8 @@ export default function AnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {timeline.length === 0 || !hasData ? (
-              <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
-                No data yet
-              </div>
+            {loading ? <ChartSkeleton /> : timeline.length === 0 || !hasData ? (
+              <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
             ) : (
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -266,14 +195,7 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "6px",
-                        fontSize: "11px",
-                      }}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px" }} />
                     <Line type="monotone" dataKey="Open Rate" stroke="#a855f7" strokeWidth={2} dot={{ r: 2 }} name="Open Rate" />
                     <Line type="monotone" dataKey="Bounce Rate" stroke="#ef4444" strokeWidth={2} dot={{ r: 2 }} name="Bounce Rate" />
                   </LineChart>
@@ -283,7 +205,6 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        {/* Engagement funnel */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -292,25 +213,22 @@ export default function AnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!hasData ? (
-              <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
-                No data yet
-              </div>
+            {loading ? (
+              <div className="h-48 space-y-4 pt-2"><ChartSkeleton /></div>
+            ) : !hasData ? (
+              <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
             ) : (
               <div className="space-y-3 pt-2">
                 {[
                   { label: "Sent", value: t.sent, pct: 100, color: "bg-blue-500" },
                   { label: "Delivered", value: t.delivered, pct: r?.deliveryRate || 0, color: "bg-green-500" },
-                  { label: "Opened", value: t.opened, pct: data?.totals?.delivered ? Math.round((t.opened / t.delivered) * 100) : 0, color: "bg-purple-500" },
-                  { label: "Clicked", value: t.clicked, pct: data?.totals?.opened ? Math.round((t.clicked / t.opened) * 100) : 0, color: "bg-orange-500" },
+                  { label: "Opened", value: t.opened, pct: t.delivered ? Math.round((t.opened / t.delivered) * 100) : 0, color: "bg-purple-500" },
+                  { label: "Clicked", value: t.clicked, pct: t.opened ? Math.round((t.clicked / t.opened) * 100) : 0, color: "bg-orange-500" },
                 ].map((s) => (
                   <div key={s.label}>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="font-medium">{s.label}</span>
-                      <span className="flex gap-2">
-                        <span>{fmt(s.value)}</span>
-                        <span className="text-muted-foreground">{s.pct}%</span>
-                      </span>
+                      <span className="flex gap-2"><span>{fmt(s.value)}</span><span className="text-muted-foreground">{s.pct}%</span></span>
                     </div>
                     <div className="h-2.5 bg-muted rounded-full overflow-hidden">
                       <div className={`h-full ${s.color} rounded-full transition-all`} style={{ width: `${Math.max(s.pct, 2)}%` }} />
@@ -323,9 +241,8 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      {/* Charts Row 3: Rate cards + By type + Weekly trend */}
+      {/* Row 3: Rates + By type + Weekly */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Key rates */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -334,24 +251,27 @@ export default function AnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[
-              { label: "Delivery Rate", value: pct(r?.deliveryRate), icon: CheckCircle2, color: "text-green-600" },
-              { label: "Open Rate", value: pct(r?.openRate), icon: Eye, color: "text-purple-600" },
-              { label: "Click Rate", value: pct(r?.clickRate), icon: MousePointerClick, color: "text-blue-600" },
-              { label: "Bounce Rate", value: pct(r?.bounceRate), icon: XCircle, color: "text-red-500" },
-            ].map((s) => (
-              <div key={s.label} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <s.icon className={`h-4 w-4 ${s.color}`} />
-                  <span className="text-sm">{s.label}</span>
-                </div>
-                <span className="text-sm font-bold">{s.value}</span>
-              </div>
-            ))}
+            {loading ? <StatCardSkeleton /> : (
+              <>
+                {[
+                  { label: "Delivery Rate", value: pct(r?.deliveryRate), icon: CheckCircle2, color: "text-green-600" },
+                  { label: "Open Rate", value: pct(r?.openRate), icon: Eye, color: "text-purple-600" },
+                  { label: "Click Rate", value: pct(r?.clickRate), icon: MousePointerClick, color: "text-blue-600" },
+                  { label: "Bounce Rate", value: pct(r?.bounceRate), icon: XCircle, color: "text-red-500" },
+                ].map((s) => (
+                  <div key={s.label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <s.icon className={`h-4 w-4 ${s.color}`} />
+                      <span className="text-sm">{s.label}</span>
+                    </div>
+                    <span className="text-sm font-bold">{s.value}</span>
+                  </div>
+                ))}
+              </>
+            )}
           </CardContent>
         </Card>
 
-        {/* By type */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -360,10 +280,8 @@ export default function AnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!data?.byType || Object.keys(data.byType).length === 0 ? (
-              <div className="h-36 flex items-center justify-center text-sm text-muted-foreground">
-                No data
-              </div>
+            {loading ? <StatCardSkeleton /> : !data?.byType || Object.keys(data.byType).length === 0 ? (
+              <div className="h-36 flex items-center justify-center text-sm text-muted-foreground">No data</div>
             ) : (
               <div className="space-y-3">
                 {Object.entries(data.byType).map(([type, count], i) => (
@@ -373,10 +291,7 @@ export default function AnalyticsPage() {
                       <span className="font-medium">{fmt(count as number)}</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: COLORS[i % COLORS.length], width: `${Math.max((count as number) / (data?.totals?.total || 1) * 100, 2)}%` }}
-                      />
+                      <div className="h-full rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length], width: `${Math.max((count as number) / (data?.totals?.total || 1) * 100, 2)}%` }} />
                     </div>
                   </div>
                 ))}
@@ -385,7 +300,6 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        {/* Weekly trend sparkline */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -394,46 +308,24 @@ export default function AnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {timeline.length === 0 || !hasData ? (
-              <div className="h-36 flex items-center justify-center text-sm text-muted-foreground">
-                No data
-              </div>
+            {loading ? <StatCardSkeleton /> : timeline.length === 0 || !hasData ? (
+              <div className="h-36 flex items-center justify-center text-sm text-muted-foreground">No data</div>
             ) : (
               <>
                 <div className="h-20">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={timeline}>
-                      <defs>
-                        <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
-                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
+                      <defs><linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient></defs>
                       <Area type="monotone" dataKey="sent" stroke="#3b82f6" fill="url(#trendGrad)" strokeWidth={2} dot={false} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
                 <div className="mt-2 space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">This week</span>
-                    <span className="font-medium">{fmt(data?.week?.sent)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Daily avg</span>
-                    <span className="font-medium">{data?.week?.avgPerDay || 0}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Delivered</span>
-                    <span className="font-medium">{fmt(data?.week?.delivered)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Opened</span>
-                    <span className="font-medium">{fmt(data?.week?.opened)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Bounced</span>
-                    <span className="font-medium">{fmt(data?.week?.bounced)}</span>
-                  </div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">This week</span><span className="font-medium">{fmt(data?.week?.sent)}</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Daily avg</span><span className="font-medium">{data?.week?.avgPerDay || 0}</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Delivered</span><span className="font-medium">{fmt(data?.week?.delivered)}</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Opened</span><span className="font-medium">{fmt(data?.week?.opened)}</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Bounced</span><span className="font-medium">{fmt(data?.week?.bounced)}</span></div>
                 </div>
               </>
             )}
@@ -441,8 +333,8 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      {/* Bottom: All metrics flat table */}
-      {hasData && (
+      {/* Full report table */}
+      {hasData && !loading && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -466,9 +358,9 @@ export default function AnalyticsPage() {
                 ["Contacts", fmt(data?.contacts)],
                 ["Week Volume", fmt(data?.week?.sent)],
               ].map(([label, value]) => (
-                <div key={label} className="flex justify-between border-b border-muted pb-1">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium">{value}</span>
+                <div key={label as string} className="flex justify-between border-b border-muted pb-1">
+                  <span className="text-muted-foreground">{label as string}</span>
+                  <span className="font-medium">{value as string}</span>
                 </div>
               ))}
             </div>
