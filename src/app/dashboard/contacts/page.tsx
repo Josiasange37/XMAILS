@@ -1,7 +1,7 @@
 "use client";
 import { PageTransition } from "@/components/page-transition";
-import { useEffect, useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
-import { Plus, Search, RefreshCw, Users, Mail, Trash2, Upload, Download } from "lucide-react";
+import { Plus, Search, RefreshCw, Users, Mail, Trash2, Upload, Sparkles, Loader2, X } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+
+const COMMON_TAGS = ["partner", "sponsor", "follower", "candidate", "team", "investor", "customer", "vendor", "media", "alumni", "advisor", "board", "trial", "vip", "enterprise"];
 
 interface Contact {
   id: string;
@@ -27,6 +29,7 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -34,15 +37,49 @@ export default function ContactsPage() {
   const [importing, setImporting] = useState(false);
   const { addToast } = useToast();
   const [form, setForm] = useState({ email: "", firstName: "", lastName: "", company: "", tags: "" });
+  const [suggesting, setSuggesting] = useState(false);
+  const suggestTimer = useRef<any>(null);
 
   const fetchContacts = useCallback(() => {
     setLoading(true);
-    fetch("/api/contacts")
+    const url = activeTag ? `/api/contacts?tag=${encodeURIComponent(activeTag)}` : "/api/contacts";
+    fetch(url)
       .then((r) => r.json())
       .then((data) => { setContacts(Array.isArray(data) ? data : []); setLoading(false); });
-  }, []);
+  }, [activeTag]);
 
   useEffect(() => { fetchContacts(); }, [fetchContacts]);
+
+  const autoSuggestTags = useCallback(async () => {
+    if (!form.email || form.tags) return;
+    setSuggesting(true);
+    try {
+      const res = await fetch("/api/ai/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: form.email,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          company: form.company,
+        }),
+      });
+      const data = await res.json();
+      if (data.tags && data.tags.length > 0) {
+        setForm((prev) => ({ ...prev, tags: data.tags.join(", ") }));
+      }
+    } catch {} finally {
+      setSuggesting(false);
+    }
+  }, [form.email, form.firstName, form.lastName, form.company, form.tags]);
+
+  useEffect(() => {
+    if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    if (form.email && !form.tags) {
+      suggestTimer.current = setTimeout(autoSuggestTags, 1200);
+    }
+    return () => { if (suggestTimer.current) clearTimeout(suggestTimer.current); };
+  }, [form.email, form.firstName, form.lastName, form.company, autoSuggestTags]);
 
   const handleAdd = async () => {
     if (!form.email) return;
@@ -67,6 +104,16 @@ export default function ContactsPage() {
       addToast({ title: "Error", description: err.error, variant: "destructive" });
     }
   };
+
+  const allTags = Array.from(new Set(contacts.flatMap((c) => c.tags || []))).sort();
+
+  const filtered = contacts.filter(
+    (c) =>
+      c.email.toLowerCase().includes(search.toLowerCase()) ||
+      (c.firstName || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.lastName || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.company || "").toLowerCase().includes(search.toLowerCase())
+  );
 
   const handleImportCSV = () => {
     if (!importFile || importPreview.length === 0) return;
@@ -127,14 +174,6 @@ export default function ContactsPage() {
     }
   };
 
-  const filtered = contacts.filter(
-    (c) =>
-      c.email.toLowerCase().includes(search.toLowerCase()) ||
-      (c.firstName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (c.lastName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (c.company || "").toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
     <PageTransition>
     <div className="space-y-6">
@@ -145,34 +184,57 @@ export default function ContactsPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchContacts}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            <RefreshCw className="h-4 w-4 mr-2" />Refresh
           </Button>
           <Button variant="outline" onClick={() => setShowImport(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Import CSV
+            <Upload className="h-4 w-4 mr-2" />Import CSV
           </Button>
           <Button onClick={() => setShowAdd(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Contact
+            <Plus className="h-4 w-4 mr-2" />Add Contact
           </Button>
         </div>
       </div>
 
       <Card>
-        <CardHeader>
+        <div className="p-4 border-b space-y-3">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input placeholder="Search contacts..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
-        </CardHeader>
-        <CardContent>
+          {allTags.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                onClick={() => setActiveTag(null)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                  !activeTag ? "bg-primary text-primary-foreground" : "bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:bg-gray-200"
+                }`}
+              >All</button>
+              {allTags.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setActiveTag(t === activeTag ? null : t)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
+                    activeTag === t ? "bg-primary text-primary-foreground" : "bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:bg-gray-200"
+                  }`}
+                >{t}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <CardContent className="p-0">
           {loading ? (
             <div className="text-center py-12 text-muted-foreground">Loading...</div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
               <Users className="h-12 w-12 text-gray-300 mx-auto mb-3 dark:text-gray-600" />
-              <p className="text-muted-foreground">No contacts found</p>
+              <p className="text-muted-foreground">
+                {contacts.length === 0 ? "No contacts yet" : "No contacts match this filter"}
+              </p>
+              {contacts.length === 0 && (
+                <Button variant="outline" className="mt-4" onClick={() => setShowAdd(true)}>
+                  <Plus className="h-4 w-4 mr-2" />Add your first contact
+                </Button>
+              )}
             </div>
           ) : (
             <Table>
@@ -184,7 +246,7 @@ export default function ContactsPage() {
                   <TableHead>Tags</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Added</TableHead>
-                  <TableHead className="w-16"></TableHead>
+                  <TableHead className="w-16" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -195,7 +257,7 @@ export default function ContactsPage() {
                     <TableCell className="text-muted-foreground">{c.company || "-"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
-                        {(c.tags || []).map((t) => <Badge key={t} variant="secondary">{t}</Badge>)}
+                        {(c.tags || []).map((t) => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -275,8 +337,41 @@ export default function ContactsPage() {
               <Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Tags (comma separated)</Label>
-              <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="customer, vip, trial" />
+              <div className="flex items-center justify-between">
+                <Label>Tags</Label>
+                {suggesting && <span className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />AI suggesting...</span>}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={form.tags}
+                  onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                  placeholder="partner, sponsor, candidate..."
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline" size="icon"
+                  onClick={() => { setForm({ ...form, tags: "" }); suggestTimer.current = setTimeout(autoSuggestTags, 300); }}
+                  title="Auto-detect tags with AI"
+                >
+                  <Sparkles className="h-4 w-4" />
+                </Button>
+              </div>
+              {form.tags && (
+                <div className="flex gap-1 flex-wrap">
+                  {form.tags.split(",").map((t, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      {t.trim()}
+                      <button onClick={() => {
+                        const ts = form.tags.split(",").filter((_, j) => j !== i);
+                        setForm({ ...form, tags: ts.join(", ") });
+                      }} className="ml-1 hover:text-destructive">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">Common: partner, sponsor, follower, candidate, team, investor, customer, vendor, media, alumni, advisor, board, trial, vip, enterprise</p>
             </div>
           </div>
           <DialogFooter>

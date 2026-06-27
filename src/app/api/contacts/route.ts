@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       const { data: contacts, error } = await db
         .from("contacts")
         .select("*")
-        .eq("tags", [tag])
+        .contains("tags", [tag])
         .order("created_at", { ascending: false })
         .limit(100);
 

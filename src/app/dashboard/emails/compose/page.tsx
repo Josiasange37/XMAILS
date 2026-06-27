@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import Link from "next/link";
 
 const DRAFT_KEY = "compose_draft";
 
-export default function ComposeEmailPage() {
+function ComposeForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addToast } = useToast();
@@ -273,5 +273,13 @@ export default function ComposeEmailPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ComposeEmailPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+      <ComposeForm />
+    </Suspense>
   );
 }
