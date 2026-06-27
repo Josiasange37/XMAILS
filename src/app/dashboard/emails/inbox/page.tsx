@@ -18,6 +18,7 @@ import {
   Image as FileImage,
   File,
   Archive,
+  Trash,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
@@ -99,6 +100,20 @@ export default function InboxPage() {
     }
   };
 
+  const clearInbox = async () => {
+    if (!confirm("Clear all received emails?")) return;
+    try {
+      const res = await fetch("/api/inbox", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to clear");
+      setEmails([]);
+      setSelectedId(null);
+      setSelectedEmail(null);
+      addToast({ title: "Inbox cleared", variant: "success" });
+    } catch {
+      addToast({ title: "Failed to clear inbox", variant: "destructive" });
+    }
+  };
+
   const downloadAttachment = async (url: string, filename: string) => {
     try {
       const res = await fetch(url);
@@ -142,10 +157,16 @@ export default function InboxPage() {
               <h1 className="text-2xl font-bold text-foreground">Inbox</h1>
               <p className="text-sm text-muted-foreground">Received emails</p>
             </div>
-            <Button variant="outline" size="sm" onClick={fetchEmails}>
-              <RefreshCw className="h-4 w-4 mr-1" />
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="destructive" size="sm" onClick={clearInbox}>
+                <Trash className="h-4 w-4 mr-1" />
+                Clear all
+              </Button>
+              <Button variant="outline" size="sm" onClick={fetchEmails}>
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Refresh
+              </Button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-1">

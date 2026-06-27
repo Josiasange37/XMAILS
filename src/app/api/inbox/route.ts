@@ -32,3 +32,20 @@ export async function GET() {
     );
   }
 }
+
+export async function DELETE() {
+  try {
+    const { error } = await db
+      .from("inbound_emails")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to clear inbox" },
+      { status: 500 }
+    );
+  }
+}
