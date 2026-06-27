@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ContactSelect from "@/components/contact-select";
 import {
   Megaphone, Sparkles, Send, Loader2, Upload, X, FileText, FileImage, File,
@@ -31,6 +32,7 @@ export default function BroadcastsPage() {
   const [editSubject, setEditSubject] = useState("");
   const [editHtml, setEditHtml] = useState("");
   const [editText, setEditText] = useState("");
+  const [analyticsBroadcast, setAnalyticsBroadcast] = useState<any>(null);
 
   useEffect(() => {
     if (result) {
@@ -340,7 +342,11 @@ export default function BroadcastsPage() {
         ) : (
           <div className="space-y-2">
             {broadcasts.map((b: any) => (
-              <div key={b.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+              <button
+                key={b.id}
+                onClick={() => setAnalyticsBroadcast(b)}
+                className="w-full text-left flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3">
                     <p className="font-medium text-foreground truncate">{b.name}</p>
@@ -356,16 +362,54 @@ export default function BroadcastsPage() {
                 </div>
                 <div className="flex items-center gap-4 ml-4">
                   <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(b.sent_at || b.created_at)}</span>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(b.id)}>
+                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(b.id); }}>
                     <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
       </div>
       </div>
+
+      <Dialog open={!!analyticsBroadcast} onOpenChange={() => setAnalyticsBroadcast(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{analyticsBroadcast?.name || "Campaign Analytics"}</DialogTitle>
+          </DialogHeader>
+          {analyticsBroadcast && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">{analyticsBroadcast.subject}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-lg bg-muted text-center">
+                  <p className="text-2xl font-bold">{analyticsBroadcast.total_sent || 0}</p>
+                  <p className="text-xs text-muted-foreground">Sent</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted text-center">
+                  <p className="text-2xl font-bold">{analyticsBroadcast.total_opened || 0}</p>
+                  <p className="text-xs text-muted-foreground">Opened</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted text-center">
+                  <p className="text-2xl font-bold">{analyticsBroadcast.total_clicked || 0}</p>
+                  <p className="text-xs text-muted-foreground">Clicked</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted text-center">
+                  <p className="text-2xl font-bold">
+                    {analyticsBroadcast.total_sent > 0
+                      ? `${Math.round((analyticsBroadcast.total_opened / analyticsBroadcast.total_sent) * 100)}%`
+                      : "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Open Rate</p>
+                </div>
+              </div>
+              {analyticsBroadcast.sent_at && (
+                <p className="text-xs text-muted-foreground">Sent: {formatDateTime(analyticsBroadcast.sent_at)}</p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </PageTransition>
   );
 }

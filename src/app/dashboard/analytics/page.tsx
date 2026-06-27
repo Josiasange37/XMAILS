@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { StatCardSkeleton, ChartSkeleton } from "@/components/ui/skeleton";
 import {
   Mail, Send, Eye, AlertTriangle, Users, TrendingUp, MousePointerClick,
   BarChart3, PieChart, Activity, Target, CheckCircle2, XCircle,
-  Download, Percent, Hash,
+  Download, Percent, Hash, FileDown,
 } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -45,6 +46,36 @@ export default function AnalyticsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const exportCSV = () => {
+    if (!data || !hasData) return;
+    const rows = [
+      ["Metric", "Value"],
+      ["Total Emails", String(t?.total ?? 0)],
+      ["Sent", String(t?.sent ?? 0)],
+      ["Delivered", String(t?.delivered ?? 0)],
+      ["Bounced", String(t?.bounced ?? 0)],
+      ["Opened", String(t?.opened ?? 0)],
+      ["Clicked", String(t?.clicked ?? 0)],
+      ["Delivery Rate (%)", String(r?.deliveryRate ?? 0)],
+      ["Open Rate (%)", String(r?.openRate ?? 0)],
+      ["Click Rate (%)", String(r?.clickRate ?? 0)],
+      ["Bounce Rate (%)", String(r?.bounceRate ?? 0)],
+      ["Contacts", String(data?.contacts ?? 0)],
+      ["Week Volume", String(data?.week?.sent ?? 0)],
+      ["", ""],
+      ["Daily Breakdown", "Sent,Delivered,Opened,Bounced"],
+      ...timeline.map((d: any) => [`${d.day}`, `${d.sent},${d.delivered},${d.opened},${d.bounced}`]),
+    ];
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `analytics-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const hasData = data?.totals?.total > 0;
   const t = data?.totals;
   const r = data?.rates;
@@ -79,6 +110,12 @@ export default function AnalyticsPage() {
               : "Start sending emails to see detailed analytics."}
           </p>
         </div>
+        {hasData && !loading && (
+          <Button variant="outline" size="sm" onClick={exportCSV}>
+            <FileDown className="h-4 w-4 mr-1" />
+            Export CSV
+          </Button>
+        )}
       </div>
 
       {error && !loading && <ErrorBanner message={error} onRetry={load} />}

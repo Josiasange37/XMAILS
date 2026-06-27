@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { InboxListSkeleton } from "@/components/ui/skeleton";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Inbox as InboxIcon,
   RefreshCw,
@@ -24,7 +25,7 @@ import {
   Search,
   Reply,
   X,
-  Smartphone,
+  Eye,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
@@ -60,6 +61,7 @@ export default function InboxPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [previewEmail, setPreviewEmail] = useState<any | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -82,6 +84,49 @@ export default function InboxPage() {
   }, []);
 
   useEffect(() => { fetchEmails(); }, [fetchEmails]);
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === filteredEmails.length) setSelected(new Set());
+    else setSelected(new Set(filteredEmails.map((e: any) => e.id)));
+  };
+
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
+    const prev = emails;
+    setEmails((e: any[]) => e.filter((m: any) => !ids.includes(m.id)));
+    if (ids.includes(selectedId || "")) { setSelectedId(null); setSelectedEmail(null); }
+    setSelected(new Set());
+    addToast({
+      title: `${ids.length} email(s) deleted`,
+      undo: () => setEmails(prev),
+    });
+    Promise.all(ids.map((id) => fetch(`/api/inbox/${id}`, { method: "DELETE" }))).catch(() => {
+      setEmails(prev);
+      addToast({ title: "Bulk delete failed", variant: "destructive" });
+    });
+  };
+
+  const bulkMarkRead = () => {
+    if (selected.size === 0) return;
+    setEmails((e: any[]) => e.map((m: any) => selected.has(m.id) ? { ...m, read: true } : m));
+    setSelected(new Set());
+    addToast({ title: `Marked ${selected.size} as read`, variant: "success" });
+    Promise.all(
+      Array.from(selected).map((id) =>
+        fetch(`/api/inbox/${id}`, { method: "PATCH", body: JSON.stringify({ read: true }) })
+      )
+    ).catch(() => {});
+  };
 
   const filteredEmails = useMemo(() => {
     if (!search) return emails;
@@ -118,7 +163,6 @@ export default function InboxPage() {
       title: "Email deleted",
       undo: () => {
         setEmails(prev);
-        fetch(`/api/inbox/${id}`, { method: "PUT", body: "{}" }).catch(() => {});
       },
     });
     fetch(`/api/inbox/${id}`, { method: "DELETE" }).catch(() => {
@@ -231,6 +275,21 @@ export default function InboxPage() {
             <ErrorBanner message={error} onRetry={fetchEmails} />
           )}
 
+          {/* Bulk action bar */}
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg border text-sm">
+              <span className="text-xs font-medium text-muted-foreground">{selected.size} selected</span>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={bulkMarkRead}>
+                <Eye className="h-3 w-3 mr-1" />
+                Mark read
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={bulkDelete}>
+                <Trash className="h-3 w-3 mr-1" />
+                Delete
+              </Button>
+            </div>
+          )}
+
           <div ref={listRef} className="flex-1 overflow-y-auto space-y-1">
             {loading ? (
               <InboxListSkeleton />
@@ -248,42 +307,49 @@ export default function InboxPage() {
               </div>
             ) : (
               filteredEmails.map((e: any) => (
-                <button
-                  key={e.id}
-                  onClick={() => openEmail(e.id)}
-                  onMouseEnter={() => setPreviewEmail(e)}
-                  onMouseLeave={() => setPreviewEmail(null)}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                    selectedId === e.id
-                      ? "bg-primary/5 border-primary/30 dark:bg-primary/10"
-                      : "bg-card hover:bg-gray-50 dark:hover:bg-gray-800/50 border-transparent"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className={`text-sm truncate flex-1 ${!e.read ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
-                      {e.from}
-                    </span>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDateTime(e.receivedAt)}
-                    </span>
+                <div key={e.id} className="flex items-start gap-1">
+                  <div className="pt-3 pl-1">
+                    <Checkbox
+                      checked={selected.has(e.id)}
+                      onCheckedChange={() => toggleSelect(e.id)}
+                    />
                   </div>
-                  <p className={`text-sm truncate mt-0.5 ${!e.read ? "font-medium text-foreground" : "text-muted-foreground"}`}>
-                    {e.subject}
-                  </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {e.hasAttachments && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Paperclip className="h-3 w-3" />
-                        {e.attachmentCount}
+                  <button
+                    onClick={() => openEmail(e.id)}
+                    onMouseEnter={() => setPreviewEmail(e)}
+                    onMouseLeave={() => setPreviewEmail(null)}
+                    className={`flex-1 text-left p-3 rounded-lg border transition-colors ${
+                      selectedId === e.id
+                        ? "bg-primary/5 border-primary/30 dark:bg-primary/10"
+                        : "bg-card hover:bg-gray-50 dark:hover:bg-gray-800/50 border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className={`text-sm truncate flex-1 ${!e.read ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                        {e.from}
                       </span>
-                    )}
-                    {previewEmail?.id === e.id && (
-                      <span className="text-xs text-muted-foreground italic truncate">
-                        Click to preview
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatDateTime(e.receivedAt)}
                       </span>
-                    )}
-                  </div>
-                </button>
+                    </div>
+                    <p className={`text-sm truncate mt-0.5 ${!e.read ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                      {e.subject}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {e.hasAttachments && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Paperclip className="h-3 w-3" />
+                          {e.attachmentCount}
+                        </span>
+                      )}
+                      {previewEmail?.id === e.id && (
+                        <span className="text-xs text-muted-foreground italic truncate">
+                          Click to preview
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                </div>
               ))
             )}
           </div>

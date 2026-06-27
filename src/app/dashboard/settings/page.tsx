@@ -12,7 +12,8 @@ import { Save, Mail, Key, Globe, Bell, Image, Trash2, Upload } from "lucide-reac
 export default function SettingsPage() {
   const { addToast } = useToast();
   const [sending, setSending] = useState({ fromName: "My Company", fromEmail: "noreply@yourdomain.com", replyTo: "hello@yourdomain.com" });
-  const [signature, setSignature] = useState("--\nBest regards,\nThe Team");
+  const [signature, setSignature] = useState({ name: "Your Name", title: "Your Title", company: "Your Company", logo: "" });
+  const [savingSig, setSavingSig] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState("");
   const [origin, setOrigin] = useState("");
 
@@ -26,17 +27,21 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setOrigin(window.location.origin);
-    fetch("/api/settings/logo")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.logoUrl) {
-          setLogoPreview(data.logoUrl);
-          setLogoFilename(data.logoFilename || "logo.png");
-        }
-        if (data?.companyName) setCompanyName(data.companyName);
-        if (data?.tagline) setTagline(data.tagline);
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch("/api/settings/logo").then((r) => r.json()).catch(() => ({})),
+      fetch("/api/settings/signature").then((r) => r.json()).catch(() => ({})),
+    ]).then(([logoData, sigData]) => {
+      if (logoData?.logoUrl) {
+        setLogoPreview(logoData.logoUrl);
+        setLogoFilename(logoData.logoFilename || "logo.png");
+      }
+      if (logoData?.companyName) setCompanyName(logoData.companyName);
+      if (logoData?.tagline) setTagline(logoData.tagline);
+      if (sigData?.signature_name) setSignature((s) => ({ ...s, name: sigData.signature_name }));
+      if (sigData?.signature_title) setSignature((s) => ({ ...s, title: sigData.signature_title }));
+      if (sigData?.signature_company) setSignature((s) => ({ ...s, company: sigData.signature_company }));
+      if (sigData?.signature_logo) setSignature((s) => ({ ...s, logo: sigData.signature_logo }));
+    });
   }, []);
 
   const handleLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,6 +92,23 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveSignature = async () => {
+    setSavingSig(true);
+    try {
+      const res = await fetch("/api/settings/signature", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(signature),
+      });
+      if (!res.ok) throw new Error();
+      addToast({ title: "Signature saved", variant: "success" });
+    } catch {
+      addToast({ title: "Failed to save signature", variant: "destructive" });
+    } finally {
+      setSavingSig(false);
+    }
+  };
+
   const handleSave = (section: string) => {
     addToast({ title: `${section} settings saved`, variant: "success" });
   };
@@ -117,8 +139,18 @@ export default function SettingsPage() {
           <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5 text-purple-600" />Email Signature</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2"><Label>Signature (plain text)</Label><Textarea rows={4} value={signature} onChange={(e) => setSignature(e.target.value)} /></div>
-          <div className="flex justify-end"><Button onClick={() => handleSave("Signature")}><Save className="h-4 w-4 mr-2" />Save</Button></div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2"><Label>Full Name</Label><Input value={signature.name} onChange={(e) => setSignature({ ...signature, name: e.target.value })} placeholder="Jane Doe" /></div>
+            <div className="space-y-2"><Label>Title</Label><Input value={signature.title} onChange={(e) => setSignature({ ...signature, title: e.target.value })} placeholder="CEO" /></div>
+            <div className="space-y-2"><Label>Company</Label><Input value={signature.company} onChange={(e) => setSignature({ ...signature, company: e.target.value })} placeholder="Xyberclan" /></div>
+          </div>
+          <div className="space-y-2"><Label>Photo URL (optional)</Label><Input value={signature.logo} onChange={(e) => setSignature({ ...signature, logo: e.target.value })} placeholder="https://example.com/photo.jpg" /></div>
+          <div className="bg-muted rounded-lg p-3 text-xs">
+            <p className="font-medium mb-1">Preview:</p>
+            <p>{signature.name}</p>
+            <p className="text-muted-foreground">{signature.title}, {signature.company}</p>
+          </div>
+          <div className="flex justify-end"><Button onClick={handleSaveSignature} disabled={savingSig}><Save className="h-4 w-4 mr-2" />{savingSig ? "Saving..." : "Save Signature"}</Button></div>
         </CardContent>
       </Card>
 
