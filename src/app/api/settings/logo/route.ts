@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { logo, logoFilename, companyName, tagline } = body;
 
-    let value: Record<string, any> = { companyName: companyName || "Xyberclan", tagline: tagline || "" };
+    let value: Record<string, any> = { companyName: companyName || "Xmailo", tagline: tagline || "" };
 
     if (logo) {
       const logoUrl = await uploadLogoToStorage(logo, logoFilename || "logo.png");

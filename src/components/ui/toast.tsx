@@ -62,9 +62,9 @@ function ToastCard({
       className={cn(
         "relative rounded-xl border p-4 shadow-xl max-w-sm flex gap-3 items-start",
         toast.variant === "destructive"
-          ? "bg-red-950 border-red-800 text-red-200"
+          ? "bg-red-50 border-red-200 text-red-700 dark:bg-red-950 dark:border-red-800 dark:text-red-200"
           : toast.variant === "success"
-          ? "bg-green-950 border-green-800 text-green-200"
+          ? "bg-green-50 border-green-200 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-200"
           : "bg-card border-card-border text-foreground"
       )}
     >

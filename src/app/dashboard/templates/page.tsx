@@ -1,15 +1,13 @@
 "use client";
 import { PageTransition } from "@/components/page-transition";
 import { useEffect, useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
-import { Plus, RefreshCw, FileText, Trash2, Copy } from "lucide-react";
+import { Plus, FileText, Trash2, Copy, RefreshCw } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 interface Template {
@@ -44,9 +42,7 @@ export default function TemplatesPage() {
     const res = await fetch("/api/templates", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name: form.name,
-        subject: form.subject,
-        html: form.html,
+        name: form.name, subject: form.subject, html: form.html,
         text: form.text || undefined,
         variables: form.variables ? form.variables.split(",").map((s) => s.trim()) : [],
       }),
@@ -65,96 +61,87 @@ export default function TemplatesPage() {
     fetchTemplates();
   };
 
-  const interpolatePreview = (html: string) => {
-    return html.replace(/\{\{(\w+)\}\}/g, "[$1]");
-  };
+  const interpolatePreview = (html: string) => html.replace(/\{\{(\w+)\}\}/g, "[$1]");
 
   return (
     <PageTransition>
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Templates</h1>
-          <p className="text-muted-foreground mt-1">Reusable email templates with variables</p>
+          <h1 className="text-[28px] font-bold tracking-tight">Templates</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Reusable email templates with variables</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchTemplates}><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
-          <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" />New Template</Button>
+        <div className="flex gap-1.5">
+          <Button variant="ghost" size="sm" className="h-9 rounded-xl" onClick={fetchTemplates}><RefreshCw className="h-4 w-4" /></Button>
+          <Button size="sm" className="h-9 rounded-xl shadow-sm" onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4 mr-1.5" />New
+          </Button>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-6">
-          {loading ? <div className="text-center py-12 text-muted-foreground">Loading...</div>
+      <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm overflow-hidden">
+        <div className="p-2">
+          {loading ? <div className="text-center py-12 text-sm text-muted-foreground">Loading...</div>
           : templates.length === 0 ? (
             <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3 dark:text-gray-600" />
-              <p className="text-muted-foreground">No templates yet</p>
+              <FileText className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">No templates yet</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Variables</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="w-32"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {templates.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="font-medium">{t.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{t.subject}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {(t.variables || []).map((v) => <span key={v} className="text-xs bg-muted text-foreground rounded px-1.5 py-0.5">{`{{${v}}}`}</span>)}
+            <div className="space-y-1">
+              {templates.map((t) => (
+                <div key={t.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/40 transition-colors group">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
+                    <FileText className="h-4 w-4 text-purple-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{t.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{t.subject} · {formatDate(t.createdAt)}</p>
+                    {(t.variables || []).length > 0 && (
+                      <div className="flex gap-1 flex-wrap mt-0.5">
+                        {(t.variables || []).map((v) => <span key={v} className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">{`{{${v}}}`}</span>)}
                       </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(t.createdAt)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => setPreview(t)}><Copy className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(t.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    )}
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setPreview(t)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><Copy className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => handleDelete(t.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
+        <DialogContent className="rounded-2xl">
           <DialogHeader><DialogTitle>New Template</DialogTitle></DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-            <div className="space-y-2"><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Subject *</Label><Input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="Hello {{firstName}}!" /></div>
-            <div className="space-y-2"><Label>HTML Body *</Label><Textarea rows={8} value={form.html} onChange={(e) => setForm({ ...form, html: e.target.value })} placeholder="<h1>Hi {{firstName}}!</h1><p>Your content here...</p>" /></div>
-            <div className="space-y-2"><Label>Plain Text</Label><Textarea rows={4} value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Variables (comma separated)</Label><Input value={form.variables} onChange={(e) => setForm({ ...form, variables: e.target.value })} placeholder="firstName, lastName, company" /></div>
+            <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-xl h-9" /></div>
+            <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Subject *</Label><Input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="Hello {{firstName}}!" className="rounded-xl h-9" /></div>
+            <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">HTML Body *</Label><Textarea rows={8} value={form.html} onChange={(e) => setForm({ ...form, html: e.target.value })} placeholder="<h1>Hi {{firstName}}!</h1>" className="rounded-xl" /></div>
+            <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Plain Text</Label><Textarea rows={4} value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} className="rounded-xl" /></div>
+            <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Variables (comma separated)</Label><Input value={form.variables} onChange={(e) => setForm({ ...form, variables: e.target.value })} placeholder="firstName, lastName, company" className="rounded-xl h-9" /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={!form.name || !form.subject || !form.html}>Create</Button>
+            <Button variant="ghost" className="rounded-xl" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button className="rounded-xl" onClick={handleCreate} disabled={!form.name || !form.subject || !form.html}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!preview} onOpenChange={(o) => { if (!o) setPreview(null); }}>
-        <DialogContent>
+        <DialogContent className="rounded-2xl">
           <DialogHeader><DialogTitle>{preview?.subject}</DialogTitle></DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-            <div className="p-4 border rounded-lg bg-white dark:bg-card">
+            <div className="p-4 border border-border/40 rounded-2xl bg-white dark:bg-card/50">
               <div dangerouslySetInnerHTML={{ __html: interpolatePreview(preview?.html || "") }} />
             </div>
-            {preview?.text && <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800"><pre className="text-sm whitespace-pre-wrap">{preview.text}</pre></div>}
+            {preview?.text && <div className="p-4 border border-border/40 rounded-2xl bg-muted/30"><pre className="text-sm whitespace-pre-wrap">{preview.text}</pre></div>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPreview(null)}>Close</Button>
+            <Button variant="ghost" className="rounded-xl" onClick={() => setPreview(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

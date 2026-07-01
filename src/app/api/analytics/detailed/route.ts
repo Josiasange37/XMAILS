@@ -1,8 +1,24 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
 
 export async function GET() {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json({
+        totals: { total: 0, sent: 0, delivered: 0, bounced: 0, opened: 0, clicked: 0 },
+        rates: { deliveryRate: 0, openRate: 0, clickRate: 0, bounceRate: 0 },
+        week: { sent: 0, delivered: 0, opened: 0, bounced: 0, avgPerDay: 0 },
+        byType: {},
+        contacts: 0,
+        dailyTimeline: [],
+      });
+    }
+
+    const { createClient } = await import("@supabase/supabase-js");
+    const db = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+
     const now = new Date();
     const sevenDaysAgo = new Date(now);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -85,7 +101,14 @@ export async function GET() {
       contacts: contactsCount || 0,
       dailyTimeline,
     });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+  } catch {
+    return NextResponse.json({
+      totals: { total: 0, sent: 0, delivered: 0, bounced: 0, opened: 0, clicked: 0 },
+      rates: { deliveryRate: 0, openRate: 0, clickRate: 0, bounceRate: 0 },
+      week: { sent: 0, delivered: 0, opened: 0, bounced: 0, avgPerDay: 0 },
+      byType: {},
+      contacts: 0,
+      dailyTimeline: [],
+    });
   }
 }

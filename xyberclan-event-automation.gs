@@ -1,5 +1,5 @@
 /**
- * XYBERCLAN WEBINAIRE #1 — Automated Confirmation Email
+ * XMAILO WEBINAIRE #1 — Automated Confirmation Email
  * Google Apps Script: Form Submit -> Resend API
  *
  * SETUP:
@@ -17,12 +17,12 @@
 var COL_NAME  = 0;  // Column A: Full Name
 var COL_EMAIL = 1;  // Column B: Email Address
 
-var EVENT_NAME    = 'XYBERCLAN WEBINAIRE #1';
-var CALENDAR_LINK = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=XYBERCLAN%20WEBINAIRE%20%231&dates=20260710T190000Z/20260710T210000Z&details=XYBERCLAN%20Webinar&location=Google%20Meet';
+var EVENT_NAME    = 'XMAILO WEBINAIRE #1';
+var CALENDAR_LINK = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=XMAILO%20WEBINAIRE%20%231&dates=20260710T190000Z/20260710T210000Z&details=XMAILO%20Webinar&location=Google%20Meet';
 var WHATSAPP_LINK = 'https://chat.whatsapp.com/IZr5ypRWXj14m6FYXiJsYE';
 
-var FROM_NAME  = 'XYBERCLAN';
-var FROM_EMAIL = 'hello@xyberclan.dev';
+var FROM_NAME  = 'XMAILO';
+var FROM_EMAIL = 'hello@xmailo.com';
 var LOG_SHEET  = '_EmailLog';
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ function buildEmail(name) {
   h += '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;line-height:1.6;color:#111827;max-width:560px;margin:0 auto;">';
 
   h += '<div style="background-color:#0c0a20;padding:28px 24px;border-radius:12px 12px 0 0;text-align:center;">';
-  h += '<h1 style="margin:0;color:#fff;font-size:20px;">XYBERCLAN</h1>';
+  h += '<h1 style="margin:0;color:#fff;font-size:20px;">XMAILO</h1>';
   h += '<p style="margin:4px 0 0;color:#94a3b8;font-size:13px;">Community &#183; Tech &#183; Growth</p>';
   h += '</div>';
 
@@ -141,7 +141,7 @@ function buildEmail(name) {
 
   h += '<p style="margin:0 0 16px;font-size:15px;">';
   h += 'Thank you for registering for ';
-  h += '<strong style="color:#0ea5e9;">XYBERCLAN WEBINAIRE #1</strong>.';
+  h += '<strong style="color:#0ea5e9;">XMAILO WEBINAIRE #1</strong>.';
   h += '</p>';
 
   h += '<div style="margin:0 0 20px;padding:16px 20px;background:#f8fafc;border-radius:8px;border-left:4px solid #0ea5e9;">';
@@ -171,13 +171,13 @@ function buildEmail(name) {
 
   h += '<p style="margin:20px 0 0;font-size:14px;">';
   h += 'See you soon,<br>';
-  h += '<strong style="color:#0ea5e9;">XYBERCLAN Team</strong>';
+  h += '<strong style="color:#0ea5e9;">XMAILO Team</strong>';
   h += '</p>';
 
   h += '</div>';
 
   h += '<p style="margin:12px 0;font-size:12px;color:#9ca3af;text-align:center;">';
-  h += 'XYBERCLAN &#8212; <a href="https://xyberclan.dev" style="color:#0ea5e9;text-decoration:none;">xyberclan.dev</a>';
+  h += 'XMAILO &#8212; <a href="https://xmailo.com" style="color:#0ea5e9;text-decoration:none;">xmailo.com</a>';
   h += '</p>';
 
   h += '</div>';

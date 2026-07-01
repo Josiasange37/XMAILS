@@ -1,6 +1,6 @@
 {
-  "name": "Xyberclan",
-  "short_name": "Xyberclan",
+  "name": "Xmailo",
+  "short_name": "Xmailo",
   "description": "AI-powered email management platform",
   "start_url": "/dashboard",
   "display": "standalone",

@@ -60,7 +60,6 @@ export default function InboxPage() {
   const [selectedEmail, setSelectedEmail] = useState<InboxEmail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [previewEmail, setPreviewEmail] = useState<any | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -106,10 +105,7 @@ export default function InboxPage() {
     setEmails((e: any[]) => e.filter((m: any) => !ids.includes(m.id)));
     if (ids.includes(selectedId || "")) { setSelectedId(null); setSelectedEmail(null); }
     setSelected(new Set());
-    addToast({
-      title: `${ids.length} email(s) deleted`,
-      undo: () => setEmails(prev),
-    });
+    addToast({ title: `${ids.length} email(s) deleted`, undo: () => setEmails(prev) });
     Promise.all(ids.map((id) => fetch(`/api/inbox/${id}`, { method: "DELETE" }))).catch(() => {
       setEmails(prev);
       addToast({ title: "Bulk delete failed", variant: "destructive" });
@@ -159,12 +155,7 @@ export default function InboxPage() {
     const wasSelected = selectedId === id;
     setEmails((e: any[]) => e.filter((m: any) => m.id !== id));
     if (wasSelected) { setSelectedId(null); setSelectedEmail(null); }
-    addToast({
-      title: "Email deleted",
-      undo: () => {
-        setEmails(prev);
-      },
-    });
+    addToast({ title: "Email deleted", undo: () => { setEmails(prev); } });
     fetch(`/api/inbox/${id}`, { method: "DELETE" }).catch(() => {
       setEmails(prev);
       addToast({ title: "Failed to delete", variant: "destructive" });
@@ -176,12 +167,7 @@ export default function InboxPage() {
     setEmails([]);
     setSelectedId(null);
     setSelectedEmail(null);
-    addToast({
-      title: "Inbox cleared",
-      undo: () => {
-        setEmails(prev);
-      },
-    });
+    addToast({ title: "Inbox cleared", undo: () => { setEmails(prev); } });
     fetch("/api/inbox", { method: "DELETE" }).catch(() => {
       setEmails(prev);
       addToast({ title: "Failed to clear", variant: "destructive" });
@@ -207,10 +193,8 @@ export default function InboxPage() {
   const fileIcon = (contentType: string) => {
     if (contentType.includes("pdf")) return <FileText className="h-4 w-4 text-red-500" />;
     if (contentType.includes("image")) return <FileImage className="h-4 w-4 text-muted-foreground" />;
-    if (contentType.includes("word") || contentType.includes("document"))
-      return <FileText className="h-4 w-4 text-muted-foreground" />;
-    if (contentType.includes("zip") || contentType.includes("rar"))
-      return <Archive className="h-4 w-4 text-yellow-600" />;
+    if (contentType.includes("word") || contentType.includes("document")) return <FileText className="h-4 w-4 text-muted-foreground" />;
+    if (contentType.includes("zip") || contentType.includes("rar")) return <Archive className="h-4 w-4 text-yellow-600" />;
     return <File className="h-4 w-4 text-gray-500" />;
   };
 
@@ -220,7 +204,6 @@ export default function InboxPage() {
     return `${(bytes / 1048576).toFixed(1)} MB`;
   };
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -235,186 +218,174 @@ export default function InboxPage() {
 
   return (
     <PageTransition>
-    <div className="flex gap-4 lg:gap-6 h-[calc(100vh-8rem)]">
-      {/* Email list */}
+    <div className="flex gap-4 lg:gap-5 h-[calc(100vh-8rem)]">
+      {/* Email list panel */}
       <div className={`${selectedId ? "hidden lg:flex" : "flex"} flex-col w-full lg:w-96 flex-shrink-0`}>
-        <div className="space-y-3 h-full flex flex-col">
-          <div className="flex items-center justify-between shrink-0">
-            <h1 className="text-2xl font-bold text-foreground">Inbox</h1>
-            <div className="flex gap-2">
-              <Button variant="destructive" size="sm" onClick={clearInbox}>
-                <Trash className="h-4 w-4 mr-1 hidden sm:inline" />
-                Clear
-              </Button>
-              <Button variant="outline" size="sm" onClick={fetchEmails}>
-                <RefreshCw className="h-4 w-4 mr-1 hidden sm:inline" />
-                <span className="sm:hidden"><RefreshCw className="h-4 w-4" /></span>
-                <span className="hidden sm:inline">Refresh</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input
-              ref={searchRef}
-              placeholder="Search sender or subject..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm"
-            />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2">
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
-            )}
-          </div>
-
-          {error && !loading && (
-            <ErrorBanner message={error} onRetry={fetchEmails} />
-          )}
-
-          {/* Bulk action bar */}
-          {selected.size > 0 && (
-            <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg border text-sm">
-              <span className="text-xs font-medium text-muted-foreground">{selected.size} selected</span>
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={bulkMarkRead}>
-                <Eye className="h-3 w-3 mr-1" />
-                Mark read
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={bulkDelete}>
-                <Trash className="h-3 w-3 mr-1" />
-                Delete
-              </Button>
-            </div>
-          )}
-
-          <div ref={listRef} className="flex-1 overflow-y-auto space-y-1">
-            {loading ? (
-              <InboxListSkeleton />
-            ) : filteredEmails.length === 0 ? (
-              <div className="text-center py-12">
-                <InboxIcon className="h-12 w-12 text-gray-300 mx-auto mb-3 dark:text-gray-600" />
-                <p className="text-muted-foreground">
-                  {search ? "No emails match your search" : "No received emails yet"}
-                </p>
-                {!search && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Configure MX records for xyberclan.dev to receive emails
-                  </p>
-                )}
+          <div className="space-y-3 h-full flex flex-col">
+            <div className="flex items-center justify-between shrink-0">
+              <h1 className="text-xl font-bold tracking-tight">Inbox</h1>
+              <div className="flex gap-1.5">
+                <Button variant="ghost" size="sm" className="h-8 rounded-xl text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={clearInbox}>
+                  <Trash className="h-3.5 w-3.5 mr-1" />
+                  <span className="hidden sm:inline">Clear</span>
+                </Button>
+                <Button variant="ghost" size="sm" className="h-8 rounded-xl" onClick={fetchEmails}>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </Button>
               </div>
-            ) : (
-              filteredEmails.map((e: any) => (
-                <div key={e.id} className="flex items-start gap-1">
-                  <div className="pt-3 pl-1">
-                    <Checkbox
-                      checked={selected.has(e.id)}
-                      onCheckedChange={() => toggleSelect(e.id)}
-                    />
-                  </div>
-                  <button
-                    onClick={() => openEmail(e.id)}
-                    onMouseEnter={() => setPreviewEmail(e)}
-                    onMouseLeave={() => setPreviewEmail(null)}
-                    className={`flex-1 text-left p-3 rounded-lg border transition-colors ${
-                      selectedId === e.id
-                        ? "bg-primary/5 border-primary/30 dark:bg-primary/10"
-                        : "bg-card hover:bg-gray-50 dark:hover:bg-gray-800/50 border-transparent"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className={`text-sm truncate flex-1 ${!e.read ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
-                        {e.from}
-                      </span>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {formatDateTime(e.receivedAt)}
-                      </span>
-                    </div>
-                    <p className={`text-sm truncate mt-0.5 ${!e.read ? "font-medium text-foreground" : "text-muted-foreground"}`}>
-                      {e.subject}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {e.hasAttachments && (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Paperclip className="h-3 w-3" />
-                          {e.attachmentCount}
-                        </span>
-                      )}
-                      {previewEmail?.id === e.id && (
-                        <span className="text-xs text-muted-foreground italic truncate">
-                          Click to preview
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                </div>
-              ))
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60 pointer-events-none" />
+              <Input
+                ref={searchRef}
+                placeholder="Search sender or subject..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-9 text-sm rounded-xl bg-muted/30 border-border/40 focus-visible:ring-1"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-muted transition-colors">
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+
+            {error && !loading && <ErrorBanner message={error} onRetry={fetchEmails} />}
+
+            {/* Bulk action bar */}
+            {selected.size > 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 rounded-xl border border-border/40 text-sm">
+                <span className="text-xs font-medium text-muted-foreground">{selected.size} selected</span>
+                <Button variant="ghost" size="sm" className="h-7 text-xs rounded-lg" onClick={bulkMarkRead}>
+                  <Eye className="h-3 w-3 mr-1" /> Mark read
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 text-xs rounded-lg text-red-500" onClick={bulkDelete}>
+                  <Trash className="h-3 w-3 mr-1" /> Delete
+                </Button>
+              </div>
             )}
+
+            {/* Email list */}
+            <div ref={listRef} className="flex-1 overflow-y-auto space-y-1 pr-0.5">
+              {loading ? (
+                <InboxListSkeleton />
+              ) : filteredEmails.length === 0 ? (
+                <div className="text-center py-12">
+                  <InboxIcon className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    {search ? "No emails match your search" : "No received emails yet"}
+                  </p>
+                  {!search && (
+                    <p className="text-xs text-muted-foreground/50 mt-1">
+                      Configure MX records for xmailo.com to receive emails
+                    </p>
+                  )}
+                </div>
+              ) : (
+                filteredEmails.map((e: any) => (
+                  <div key={e.id} className="flex items-start gap-1.5 group">
+                    <div className="pt-3 pl-1">
+                      <Checkbox
+                        checked={selected.has(e.id)}
+                        onCheckedChange={() => toggleSelect(e.id)}
+                        className="rounded-md data-[state=checked]:bg-primary border-muted-foreground/30"
+                      />
+                    </div>
+                    <button
+                      onClick={() => openEmail(e.id)}
+                      className={`flex-1 text-left p-3 rounded-xl border transition-all duration-150 ${
+                        selectedId === e.id
+                          ? "bg-primary/5 border-primary/30 shadow-sm"
+                          : "border-transparent hover:bg-muted/40 hover:border-border/30"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className={`text-sm truncate flex-1 ${!e.read ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                          {e.from}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground/60 whitespace-nowrap">
+                          {formatDateTime(e.receivedAt)}
+                        </span>
+                      </div>
+                      <p className={`text-sm truncate mt-0.5 ${!e.read ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                        {e.subject}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {e.hasAttachments && (
+                          <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+                            <Paperclip className="h-3 w-3" />
+                            {e.attachmentCount}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Email detail */}
+      {/* Email detail panel */}
       <div className={`${!selectedId ? "hidden lg:flex" : "flex-1"} flex flex-col`}>
         {selectedId && detailLoading ? (
           <div className="flex items-center justify-center h-full">
             <InboxListSkeleton />
           </div>
         ) : selectedEmail ? (
-          <Card className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl overflow-hidden shadow-sm">
             {/* Header */}
-            <CardContent className="p-4 border-b shrink-0">
+            <div className="p-4 border-b border-border/40 shrink-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => { setSelectedId(null); setSelectedEmail(null); }}>
+                  <Button variant="ghost" size="sm" className="h-8 rounded-xl" onClick={() => { setSelectedId(null); setSelectedEmail(null); }}>
                     <ChevronLeft className="h-4 w-4 mr-1" /> Back
                   </Button>
-                  <span className="text-xs text-muted-foreground hidden sm:inline">Press Esc to close</span>
+                  <span className="text-xs text-muted-foreground/50 hidden sm:inline">Esc to close</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  {/* Reply button */}
                   <Link
                     href={`/dashboard/emails/compose?to=${encodeURIComponent(selectedEmail.from)}&subject=${encodeURIComponent("Re: " + selectedEmail.subject)}`}
                   >
-                    <Button variant="outline" size="sm">
-                      <Reply className="h-4 w-4 mr-1" />
+                    <Button variant="outline" size="sm" className="h-8 rounded-xl">
+                      <Reply className="h-3.5 w-3.5 mr-1" />
                       Reply
                     </Button>
                   </Link>
-                  <Button variant="ghost" size="sm" onClick={() => deleteEmail(selectedEmail.id)}>
-                    <Trash2 className="h-4 w-4 text-red-500" />
+                  <Button variant="ghost" size="sm" className="h-8 rounded-xl text-red-500" onClick={() => deleteEmail(selectedEmail.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
-              <h2 className="text-lg font-semibold text-foreground">{selectedEmail.subject}</h2>
-              <div className="text-sm text-muted-foreground mt-2 space-y-1">
+              <h2 className="text-base font-semibold">{selectedEmail.subject}</h2>
+              <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
                 <p><span className="font-medium text-foreground">From:</span> {selectedEmail.from}</p>
                 <p><span className="font-medium text-foreground">To:</span> {selectedEmail.to}</p>
                 <p><span className="font-medium text-foreground">Date:</span> {formatDateTime(selectedEmail.receivedAt)}</p>
               </div>
-            </CardContent>
+            </div>
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-4">
               {selectedEmail.html ? (
                 <iframe
                   srcDoc={selectedEmail.html}
-                  className="w-full h-full min-h-[300px] border-0"
+                  className="w-full h-full min-h-[300px] border-0 rounded-xl"
                   title="Email body"
                   sandbox="allow-same-origin"
                 />
               ) : (
-                <p className="text-foreground whitespace-pre-wrap">{selectedEmail.text}</p>
+                <p className="text-foreground whitespace-pre-wrap text-sm">{selectedEmail.text}</p>
               )}
             </div>
 
             {/* Attachments */}
             {selectedEmail.attachments.length > 0 && (
-              <div className="border-t p-4 shrink-0">
-                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Paperclip className="h-4 w-4" />
+              <div className="border-t border-border/40 p-4 shrink-0">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <Paperclip className="h-3.5 w-3.5" />
                   Attachments ({selectedEmail.attachments.length})
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -422,28 +393,26 @@ export default function InboxPage() {
                     <button
                       key={att.index}
                       onClick={() => downloadAttachment(att.downloadUrl, att.filename)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-left"
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border/40 bg-card hover:bg-muted/50 transition-colors text-left"
                     >
                       {fileIcon(att.content_type)}
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate max-w-[180px]">
-                          {att.filename}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{formatSize(att.size)}</p>
+                        <p className="text-xs font-medium text-foreground truncate max-w-[160px]">{att.filename}</p>
+                        <p className="text-[11px] text-muted-foreground">{formatSize(att.size)}</p>
                       </div>
-                      <Download className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <Download className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
                     </button>
                   ))}
                 </div>
               </div>
             )}
-          </Card>
+          </div>
         ) : (
-          <div className="hidden lg:flex items-center justify-center h-full text-muted-foreground">
+          <div className="hidden lg:flex items-center justify-center h-full">
             <div className="text-center">
-              <Mail className="h-12 w-12 text-gray-300 mx-auto mb-3 dark:text-gray-600" />
-              <p>Select an email to read</p>
-              <p className="text-xs mt-1">Press / to search, r to refresh, n to compose</p>
+              <Mail className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">Select an email to read</p>
+              <p className="text-xs text-muted-foreground/50 mt-1">Press / to search, r to refresh, n to compose</p>
             </div>
           </div>
         )}

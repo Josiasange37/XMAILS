@@ -6,10 +6,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <ToastProvider>
       <ErrorBoundary>
-        <div className="flex h-screen bg-background">
+        <div className="min-h-screen bg-background overflow-x-hidden">
           <Sidebar />
-          <main className="flex-1 overflow-y-auto pt-14 lg:pt-0">
-            <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+          <main className="lg:pl-20 pb-16 lg:pb-0 pt-12 lg:pt-0">
+            <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">{children}</div>
           </main>
         </div>
       </ErrorBoundary>

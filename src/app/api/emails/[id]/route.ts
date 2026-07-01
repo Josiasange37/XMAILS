@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const emailId = request.nextUrl.searchParams.get("emailId");
-    if (!emailId) {
-      return NextResponse.json({ error: "emailId required" }, { status: 400 });
-    }
-
     const { data: email, error } = await db
       .from("emails")
       .select("*")
-      .eq("id", emailId)
+      .eq("id", params.id)
       .single();
 
     if (error || !email) {

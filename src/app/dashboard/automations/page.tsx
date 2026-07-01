@@ -1,18 +1,16 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
-import { Plus, RefreshCw, Zap, Trash2, Power } from "lucide-react";
+import { Plus, RefreshCw, Zap, Trash2, Power, Sparkles } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { PageTransition } from "@/components/page-transition";
 
 interface Automation {
   id: string;
@@ -91,117 +89,103 @@ export default function AutomationsPage() {
     contact_added: "Contact Added", tag_added: "Tag Added", email_opened: "Email Opened",
     email_clicked: "Email Clicked", schedule: "Schedule",
   };
-  const actionLabels: Record<string, string> = {
-    send_email: "Send Email", add_tag: "Add Tag", remove_tag: "Remove Tag",
-    add_to_audience: "Add to Audience", wait: "Wait",
-  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Automations</h1>
-          <p className="text-muted-foreground mt-1">Trigger-based email automations</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchAutomations}><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
-          <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" />New Automation</Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardContent className="p-6">
-          {loading ? <div className="text-center py-12 text-muted-foreground">Loading...</div>
-          : automations.length === 0 ? (
-            <div className="text-center py-12"><Zap className="h-12 w-12 text-gray-300 mx-auto mb-3 dark:text-gray-600" /><p className="text-muted-foreground">No automations yet</p></div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Trigger</TableHead>
-                  <TableHead>Actions</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="w-24"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {automations.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-medium">{a.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{triggerLabels[a.trigger?.type] || a.trigger?.type}</TableCell>
-                    <TableCell className="text-muted-foreground">{a.actions?.length || 0} actions</TableCell>
-                    <TableCell>
-                      <Badge variant={a.active ? "success" : "secondary"}>{a.active ? "Active" : "Inactive"}</Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(a.createdAt)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => toggleActive(a)}>
-                          <Power className={`h-4 w-4 ${a.active ? "text-green-600" : "text-gray-400"}`} />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>New Automation</DialogTitle></DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-            <div className="space-y-2"><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-            <div className="space-y-2">
-              <Label>Trigger</Label>
-              <Select value={form.triggerType} onChange={(e) => setForm({ ...form, triggerType: e.target.value })}
-                options={[
-                  { value: "contact_added", label: "Contact Added" },
-                  { value: "tag_added", label: "Tag Added" },
-                  { value: "email_opened", label: "Email Opened" },
-                  { value: "email_clicked", label: "Email Clicked" },
-                ]} />
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={form.active} onCheckedChange={(c) => setForm({ ...form, active: c })} />
-              <Label>Active on creation</Label>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between"><Label>Actions</Label><Button variant="outline" size="sm" onClick={addAction}>+ Add Action</Button></div>
-              {actions.map((action, i) => (
-                <div key={i} className="p-3 border rounded-lg space-y-2 bg-gray-50 dark:bg-gray-800">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Action {i + 1}</span>
-                    {actions.length > 1 && <Button variant="ghost" size="icon" onClick={() => removeAction(i)}><Trash2 className="h-4 w-4 text-red-500" /></Button>}
-                  </div>
-                  <Select value={action.type} onChange={(e) => updateAction(i, "type", e.target.value)}
-                    options={[
-                      { value: "send_email", label: "Send Email" },
-                      { value: "add_tag", label: "Add Tag" },
-                      { value: "remove_tag", label: "Remove Tag" },
-                      { value: "add_to_audience", label: "Add to Audience" },
-                      { value: "wait", label: "Wait" },
-                    ]} />
-                  <div className="space-y-2"><Label className="text-xs">Delay (days)</Label>
-                    <Input type="number" min={0} value={action.delayDays} onChange={(e) => updateAction(i, "delayDays", parseInt(e.target.value) || 0)} /></div>
-                </div>
-              ))}
-            </div>
+    <PageTransition>
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-[28px] font-bold tracking-tight">Automations</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Trigger-based email automations</p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={!form.name}>Create</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+          <div className="flex gap-1.5">
+            <Button variant="ghost" size="sm" className="h-9 rounded-xl" onClick={fetchAutomations}><RefreshCw className="h-4 w-4" /></Button>
+            <Button size="sm" className="h-9 rounded-xl shadow-sm" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1.5" />New</Button>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm overflow-hidden">
+          <div className="p-2">
+            {loading ? <div className="text-center py-12 text-sm text-muted-foreground">Loading...</div>
+            : automations.length === 0 ? (
+              <div className="text-center py-12">
+                <Zap className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No automations yet</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {automations.map((a) => (
+                  <div key={a.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/40 transition-colors">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Zap className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate">{a.name}</p>
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${a.active ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400" : "bg-muted/60 text-muted-foreground"}`}>{a.active ? "Active" : "Inactive"}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{triggerLabels[a.trigger?.type] || a.trigger?.type} · {a.actions?.length || 0} actions · {formatDate(a.createdAt)}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => toggleActive(a)} className={`p-1.5 rounded-lg hover:bg-muted ${a.active ? "text-green-500" : "text-muted-foreground"}`}><Power className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => handleDelete(a.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Dialog open={showCreate} onOpenChange={setShowCreate}>
+          <DialogContent className="rounded-2xl">
+            <DialogHeader><DialogTitle>New Automation</DialogTitle></DialogHeader>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-xl h-9" /></div>
+              <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="rounded-xl" /></div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Trigger</Label>
+                <Select value={form.triggerType} onChange={(e) => setForm({ ...form, triggerType: e.target.value })}
+                  options={[
+                    { value: "contact_added", label: "Contact Added" },
+                    { value: "tag_added", label: "Tag Added" },
+                    { value: "email_opened", label: "Email Opened" },
+                    { value: "email_clicked", label: "Email Clicked" },
+                  ]} />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={form.active} onCheckedChange={(c) => setForm({ ...form, active: c })} />
+                <Label className="text-xs text-muted-foreground">Active on creation</Label>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between"><Label className="text-xs text-muted-foreground">Actions</Label><Button variant="ghost" size="sm" className="h-7 rounded-lg text-xs" onClick={addAction}>+ Add</Button></div>
+                {actions.map((action, i) => (
+                  <div key={i} className="px-3 py-2.5 border border-border/40 rounded-xl bg-muted/20 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium">Action {i + 1}</span>
+                      {actions.length > 1 && <button onClick={() => removeAction(i)} className="p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>}
+                    </div>
+                    <Select value={action.type} onChange={(e) => updateAction(i, "type", e.target.value)}
+                      options={[
+                        { value: "send_email", label: "Send Email" },
+                        { value: "add_tag", label: "Add Tag" },
+                        { value: "remove_tag", label: "Remove Tag" },
+                        { value: "add_to_audience", label: "Add to Audience" },
+                        { value: "wait", label: "Wait" },
+                      ]} />
+                    <div className="space-y-1"><Label className="text-[10px] text-muted-foreground">Delay (days)</Label>
+                      <Input type="number" min={0} value={action.delayDays} onChange={(e) => updateAction(i, "delayDays", parseInt(e.target.value) || 0)} className="rounded-xl h-8 text-xs" /></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" className="rounded-xl" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button className="rounded-xl" onClick={handleCreate} disabled={!form.name}>Create</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </PageTransition>
   );
 }

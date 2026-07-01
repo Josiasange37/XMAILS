@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
 
 export async function GET(request: NextRequest) {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json([]);
+    }
+
+    const { createClient } = await import("@supabase/supabase-js");
+    const db = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+
     const searchParams = request.nextUrl.searchParams;
     const emailId = searchParams.get("emailId");
     const broadcastId = searchParams.get("broadcastId");
@@ -34,10 +43,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json(events || []);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to fetch analytics" },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json([]);
   }
 }

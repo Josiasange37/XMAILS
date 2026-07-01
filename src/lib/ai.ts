@@ -81,7 +81,7 @@ function openRouterHeaders(apiKey: string) {
     Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
     "HTTP-Referer": OR_REFERER(),
-    "X-Title": "Xyberclan",
+    "X-Title": "Xmailo",
   };
 }
 

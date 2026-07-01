@@ -2,11 +2,11 @@
 import { PageTransition } from "@/components/page-transition";
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { StatCardSkeleton, ChartSkeleton } from "@/components/ui/skeleton";
-import { Plus, Users, Send, Eye, AlertTriangle, Mail, Activity, Circle, CheckCircle2, ArrowRight } from "lucide-react";
+import { Plus, Send, Eye, AlertTriangle, Mail, Activity, Circle, CheckCircle2, ArrowRight, BarChart3, TrendingUp } from "lucide-react";
 import {
   BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -17,6 +17,28 @@ interface TimelineDay {
   Delivered: number;
   Opened: number;
   Bounced: number;
+}
+
+function StatCard({ title, metric, icon: Icon, highlight }: { title: string; metric: string; icon: any; highlight?: "good" | "bad" | "none" }) {
+  return (
+    <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl p-5 shadow-sm transition-all hover:shadow-md">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-medium text-muted-foreground tracking-wide uppercase">{title}</span>
+        <div className={`p-2 rounded-xl ${
+          highlight === "good" ? "bg-emerald-50 dark:bg-emerald-900/20" :
+          highlight === "bad" ? "bg-red-50 dark:bg-red-900/20" :
+          "bg-muted/50"
+        }`}>
+          <Icon className={`h-4 w-4 ${
+            highlight === "good" ? "text-emerald-600 dark:text-emerald-400" :
+            highlight === "bad" ? "text-red-500 dark:text-red-400" :
+            "text-muted-foreground"
+          }`} />
+        </div>
+      </div>
+      <p className="text-2xl font-bold tracking-tight">{metric}</p>
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -47,240 +69,205 @@ export default function DashboardPage() {
   const deliverabilityScore = hasData && stats.totalSent > 0 ? Math.round((stats.totalDelivered / stats.totalSent) * 100) : null;
   const totalWeekly = useMemo(() => timeline.reduce((s, d) => s + d.Sent, 0), [timeline]);
 
-  const statCards = [
-    { title: "Emails Sent", metric: sentDisplay, icon: Send, color: "green" },
-    { title: "Delivered", metric: hasData ? String(stats.totalDelivered) : "—", icon: Mail, color: "green" },
-    { title: "Open Rate", metric: hasData ? `${stats.openRate}%` : "—", icon: Eye, color: hasData && stats.openRate > 30 ? "green" : "muted" },
-    { title: "Bounce Rate", metric: hasData ? `${stats.bounceRate}%` : "—", icon: AlertTriangle, color: hasData && stats.bounceRate > 5 ? "red" : "muted" },
-  ];
-
-  const quickStartSteps = [
-    { label: "Send your first email", href: "/dashboard/emails/compose", done: hasData },
-    { label: "Import contacts", href: "/dashboard/contacts", done: (stats?.totalContacts || 0) > 0 },
-    { label: "Create a broadcast", href: "/dashboard/broadcasts", done: false },
-    { label: "Design a template", href: "/dashboard/templates", done: false },
-  ];
-
   return (
     <PageTransition>
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Monitor your email performance.</p>
-        </div>
-        <Link href="/dashboard/emails/compose">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Compose Email
-          </Button>
-        </Link>
-      </div>
-
-      {error && !loading && <ErrorBanner message={error} onRetry={load} />}
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {loading ? (
-          <>
-            <Card><StatCardSkeleton /></Card>
-            <Card><StatCardSkeleton /></Card>
-            <Card><StatCardSkeleton /></Card>
-            <Card><StatCardSkeleton /></Card>
-          </>
-        ) : (
-          statCards.map((card) => (
-            <Card key={card.title}>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">{card.title}</p>
-                  <div className={`p-2 rounded-lg ${card.color === "green" ? "bg-green-50" : card.color === "red" ? "bg-red-50" : "bg-muted"}`}>
-                    <card.icon className={`h-4 w-4 ${card.color === "green" ? "text-green-600" : card.color === "red" ? "text-red-500" : "text-muted-foreground"}`} />
-                  </div>
-                </div>
-                <p className="text-2xl font-bold mt-2">{card.metric}</p>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
-
-      {/* Campaign Performance chart */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+      <div className="space-y-5 sm:space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Campaign Performance</CardTitle>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {hasData ? `${totalWeekly} emails sent in the last 7 days` : "Your email activity will appear here."}
-            </p>
+            <h1 className="text-[28px] font-bold tracking-tight">Dashboard</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Monitor your email performance</p>
           </div>
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">Last 7 days</span>
-        </CardHeader>
-        <CardContent>
+          <Link href="/dashboard/emails/compose">
+            <Button className="rounded-xl h-9 px-4 gap-1.5 shadow-sm">
+              <Plus className="h-4 w-4" />
+              <span>Compose</span>
+            </Button>
+          </Link>
+        </div>
+
+        {error && !loading && <ErrorBanner message={error} onRetry={load} />}
+
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {loading ? (
-            <ChartSkeleton />
-          ) : timeline.length === 0 || !hasData ? (
-            <div className="h-56 flex flex-col items-center justify-center text-muted-foreground">
-              <Activity className="h-10 w-10 mb-2 text-gray-300" />
-              <p className="text-sm">No campaign data yet</p>
-              <p className="text-xs mt-1">Emails you send will appear here.</p>
-            </div>
+            <>
+              {[...Array(4)].map((_, i) => <div key={i} className="rounded-2xl border border-border/40 bg-card/80 p-5"><StatCardSkeleton /></div>)}
+            </>
           ) : (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={timeline}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
-                  <Bar dataKey="Sent" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Sent" />
-                  <Bar dataKey="Delivered" fill="#22c55e" radius={[3, 3, 0, 0]} name="Delivered" />
-                  <Bar dataKey="Opened" fill="#a855f7" radius={[3, 3, 0, 0]} name="Opened" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <>
+              <StatCard title="Sent" metric={sentDisplay} icon={Send} highlight={hasData ? "good" : "none"} />
+              <StatCard title="Delivered" metric={hasData ? String(stats.totalDelivered) : "—"} icon={Mail} highlight={hasData ? "good" : "none"} />
+              <StatCard title="Open Rate" metric={hasData ? `${stats.openRate}%` : "—"} icon={Eye} highlight={hasData && stats.openRate > 30 ? "good" : stats.openRate > 0 && stats.openRate <= 30 ? "bad" : "none"} />
+              <StatCard title="Bounce Rate" metric={hasData ? `${stats.bounceRate}%` : "—"} icon={AlertTriangle} highlight={hasData && stats.bounceRate > 5 ? "bad" : "good"} />
+            </>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Bottom row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {[
-              { label: "Create Campaign", icon: Send, href: "/dashboard/broadcasts" },
-              { label: "Import Contacts", icon: Users, href: "/dashboard/contacts" },
-              { label: "Design Template", icon: Activity, href: "/dashboard/templates" },
-              { label: "View Reports", icon: AlertTriangle, href: "/dashboard/analytics" },
-            ].map((a) => (
-              <Link key={a.label} href={a.href}>
-                <Button variant="outline" size="sm" className="w-full justify-start text-xs h-8">
-                  <a.icon className="h-3.5 w-3.5 mr-2 shrink-0" />
-                  {a.label}
-                </Button>
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
+        {/* Campaign Performance chart */}
+        <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm">
+          <div className="flex items-center justify-between px-5 pt-5 pb-2">
+            <div>
+              <h2 className="text-sm font-semibold flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                Campaign Performance
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {hasData ? `${totalWeekly} emails sent in the last 7 days` : "Your email activity will appear here"}
+              </p>
+            </div>
+            <span className="text-[11px] text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full">Last 7 days</span>
+          </div>
+          <div className="px-5 pb-5">
+            {loading ? (
+              <ChartSkeleton />
+            ) : timeline.length === 0 || !hasData ? (
+              <div className="h-56 flex flex-col items-center justify-center text-muted-foreground">
+                <Activity className="h-8 w-8 mb-2 text-muted-foreground/40" />
+                <p className="text-sm">No campaign data yet</p>
+                <p className="text-xs mt-1 text-muted-foreground/60">Emails you send will appear here</p>
+              </div>
+            ) : (
+              <div className="h-56 sm:h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={timeline}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.8} />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} stroke="hsl(var(--border))" tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} stroke="hsl(var(--border))" tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px", boxShadow: "0 8px 32px rgba(0,0,0,0.12)", color: "hsl(var(--text))" }} />
+                    <Bar dataKey="Sent" fill="#7c3aed" radius={[4, 4, 0, 0]} name="Sent" />
+                    <Bar dataKey="Delivered" fill="#22c55e" radius={[4, 4, 0, 0]} name="Delivered" />
+                    <Bar dataKey="Opened" fill="#a78bfa" radius={[4, 4, 0, 0]} name="Opened" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        </div>
 
-        {/* Quick-start checklist (if no data) / Deliverability (if has data) */}
-        {!hasData && !loading ? (
-          <Card className="lg:col-span-3">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Quick Start Checklist</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {quickStartSteps.map((s) => (
-                <Link key={s.label} href={s.href}>
-                  <div className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${s.done ? "border-green-200 bg-green-50/50 dark:border-green-900" : "hover:bg-muted"}`}>
-                    {s.done ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                    ) : (
-                      <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
-                    )}
-                    <span className={`text-sm flex-1 ${s.done ? "text-green-700 line-through" : ""}`}>{s.label}</span>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+        {/* Bottom row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Quick Actions */}
+          <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl p-5 shadow-sm">
+            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase mb-3">Quick Actions</h3>
+            <div className="space-y-1.5">
+              {[
+                { label: "Create Campaign", icon: Send, href: "/dashboard/broadcasts" },
+                { label: "Import Contacts", icon: BarChart3, href: "/dashboard/contacts" },
+                { label: "Design Template", icon: Activity, href: "/dashboard/templates" },
+                { label: "View Reports", icon: TrendingUp, href: "/dashboard/analytics" },
+              ].map((a) => (
+                <Link key={a.label} href={a.href}>
+                  <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer">
+                    <a.icon className="h-4 w-4" />
+                    <span>{a.label}</span>
+                    <ArrowRight className="h-3.5 w-3.5 ml-auto" />
                   </div>
                 </Link>
               ))}
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Deliverability</CardTitle>
-              </CardHeader>
-              <CardContent>
+            </div>
+          </div>
+
+          {/* Quick-start checklist or Deliverability + Activity + Status */}
+          {!hasData && !loading ? (
+            <div className="lg:col-span-3 rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl p-5 shadow-sm">
+              <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase mb-3">Quick Start</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  { label: "Send your first email", href: "/dashboard/emails/compose", done: hasData },
+                  { label: "Import contacts", href: "/dashboard/contacts", done: (stats?.totalContacts || 0) > 0 },
+                  { label: "Create a broadcast", href: "/dashboard/broadcasts", done: false },
+                  { label: "Design a template", href: "/dashboard/templates", done: false },
+                ].map((s) => (
+                  <Link key={s.label} href={s.href}>
+                    <div className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${s.done ? "border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-900/10" : "border-border/40 hover:bg-muted/50"}`}>
+                      {s.done ? (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />
+                      )}
+                      <span className={`text-sm flex-1 ${s.done ? "text-emerald-700 dark:text-emerald-300 line-through" : ""}`}>{s.label}</span>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl p-5 shadow-sm">
+                <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase mb-3">Deliverability</h3>
                 {deliverabilityScore !== null ? (
                   <>
                     <div className="flex items-baseline gap-1 mb-1">
-                      <span className="text-2xl font-bold">{deliverabilityScore}</span>
+                      <span className="text-3xl font-bold tracking-tight">{deliverabilityScore}</span>
                       <span className="text-sm text-muted-foreground">/100</span>
                     </div>
-                    <p className="text-xs text-green-600 mb-3">
-                      {deliverabilityScore >= 80 ? "Your inbox placement is healthy." :
-                       deliverabilityScore >= 50 ? "Room for improvement." : "Needs attention."}
+                    <p className={`text-xs mb-4 ${deliverabilityScore >= 80 ? "text-emerald-600 dark:text-emerald-400" : deliverabilityScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                      {deliverabilityScore >= 80 ? "Your inbox placement is healthy" :
+                       deliverabilityScore >= 50 ? "Room for improvement" : "Needs attention"}
                     </p>
                   </>
-                ) : <p className="text-sm text-muted-foreground mb-3">No data yet</p>}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <Circle className="h-2 w-2 fill-red-500 text-red-500" />
-                      <span>Spam complaints</span>
+                ) : <p className="text-sm text-muted-foreground mb-4">No data yet</p>}
+                <div className="space-y-2.5">
+                  {[
+                    { label: "Spam complaints", status: "Low", color: "fill-emerald-500" },
+                    { label: "Bounce rate", status: hasData ? `${stats.bounceRate}%` : "—", color: hasData && stats.bounceRate > 5 ? "fill-amber-400" : "fill-emerald-500" },
+                    { label: "Domain auth", status: "Verified", color: "fill-emerald-500" },
+                  ].map((s) => (
+                    <div key={s.label} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Circle className={`h-2 w-2 ${s.color} text-transparent`} />
+                        <span className="text-muted-foreground">{s.label}</span>
+                      </div>
+                      <span className="font-medium">{s.status}</span>
                     </div>
-                    <span className="font-medium">Low</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <Circle className={`h-2 w-2 ${hasData && stats.bounceRate > 5 ? "fill-orange-400" : "fill-green-500 text-green-500"}`} />
-                      <span>Bounce rate</span>
-                    </div>
-                    <span className="font-medium">{hasData ? `${stats.bounceRate}%` : "—"}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <Circle className="h-2 w-2 fill-green-500 text-green-500" />
-                      <span>Domain auth</span>
-                    </div>
-                    <span className="font-medium">Verified</span>
-                  </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Weekly Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
+              <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl p-5 shadow-sm">
+                <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase mb-3">Weekly Activity</h3>
                 {timeline.length > 0 && hasData ? (
                   <>
-                    <div className="h-20">
+                    <div className="h-16">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={timeline}>
-                          <defs><linearGradient id="weeklyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient></defs>
-                          <Area type="monotone" dataKey="Sent" stroke="#3b82f6" fill="url(#weeklyGrad)" strokeWidth={2} dot={false} />
+                          <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.25} /><stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} /></linearGradient></defs>
+                          <Area type="monotone" dataKey="Sent" stroke="hsl(var(--primary))" fill="url(#wg)" strokeWidth={2} dot={false} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="mt-2 space-y-1">
+                    <div className="mt-2.5 space-y-1.5">
                       <div className="flex justify-between text-xs"><span className="text-muted-foreground">Total sent</span><span className="font-medium">{totalWeekly}</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Avg per day</span><span className="font-medium">{Math.round(totalWeekly / timeline.length)}</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Avg per day</span><span className="font-medium">{Math.round(totalWeekly / Math.max(timeline.filter(d => d.Sent > 0).length, 1))}</span></div>
                     </div>
                   </>
-                ) : <div className="h-20 flex items-center justify-center text-muted-foreground text-xs">No data yet</div>}
-              </CardContent>
-            </Card>
+                ) : <div className="h-16 flex items-center justify-center text-muted-foreground text-xs">No data yet</div>}
+              </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">System Status</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Circle className="h-2.5 w-2.5 fill-green-500 text-green-500 shrink-0" />
-                  <div className="text-xs"><p className="font-medium">Email Service</p><p className="text-muted-foreground">Operational</p></div>
+              <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl p-5 shadow-sm">
+                <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase mb-3">System Status</h3>
+                <div className="space-y-3">
+                  {[
+                    { label: "Email Service", status: "Operational" },
+                    { label: "API", status: "All systems normal" },
+                    { label: "Domain", status: "xmailo.com verified" },
+                  ].map((s) => (
+                    <div key={s.label} className="flex items-center gap-2.5">
+                      <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)] shrink-0" />
+                      <div className="text-xs">
+                        <p className="font-medium text-foreground">{s.label}</p>
+                        <p className="text-muted-foreground">{s.status}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Circle className="h-2.5 w-2.5 fill-green-500 text-green-500 shrink-0" />
-                  <div className="text-xs"><p className="font-medium">API</p><p className="text-muted-foreground">All systems normal</p></div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Circle className="h-2.5 w-2.5 fill-green-500 text-green-500 shrink-0" />
-                  <div className="text-xs"><p className="font-medium">Domain</p><p className="text-muted-foreground">xyberclan.dev verified</p></div>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
     </PageTransition>
   );
 }

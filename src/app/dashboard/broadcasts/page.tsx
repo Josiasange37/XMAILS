@@ -1,7 +1,6 @@
 "use client";
 import { PageTransition } from "@/components/page-transition";
 import { useEffect, useState, useRef } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -10,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import ContactSelect from "@/components/contact-select";
 import {
   Megaphone, Sparkles, Send, Loader2, Upload, X, FileText, FileImage, File,
-  Trash2, ChevronDown, ChevronUp, Eye
+  Trash2, ChevronUp, Eye, Plus
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
@@ -137,7 +136,7 @@ export default function BroadcastsPage() {
           subject: editSubject,
           html: editHtml,
           text: editText,
-          from: "Xyberclan <noreply@xyberclan.dev>",
+          from: "Xmailo <noreply@xmailo.com>",
           sendNow: true,
           customRecipients: recipients,
         }),
@@ -146,11 +145,7 @@ export default function BroadcastsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to send");
       addToast({ title: `Broadcast sent to ${recipients.length} recipient(s)`, variant: "success" });
       setShowCreate(false);
-      setPrompt("");
-      setFiles([]);
-      setSelectedContacts([]);
-      setResult(null);
-      setCampaignName("");
+      setPrompt(""); setFiles([]); setSelectedContacts([]); setResult(null); setCampaignName("");
       fetchData();
     } catch (err: any) {
       addToast({ title: "Failed to send broadcast", description: err.message, variant: "destructive" });
@@ -179,237 +174,144 @@ export default function BroadcastsPage() {
 
   return (
     <PageTransition>
-    <div className="max-w-5xl mx-auto space-y-8">
-      {/* Header */}
+    <div className="max-w-6xl space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Broadcasts</h1>
-          <p className="text-muted-foreground mt-1">
-            {broadcasts.length} campaign{broadcasts.length !== 1 ? "s" : ""} sent
-          </p>
+          <h1 className="text-[28px] font-bold tracking-tight">Broadcasts</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{broadcasts.length} campaign{broadcasts.length !== 1 ? "s" : ""} sent</p>
         </div>
-        <Button onClick={() => { setShowCreate(!showCreate); if (showCreate) { setResult(null); setPrompt(""); setFiles([]); setSelectedContacts([]); setCampaignName(""); } }}>
-          {showCreate ? <ChevronUp className="h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-          {showCreate ? "Close" : "New Broadcast"}
+        <Button size="sm" className="h-9 rounded-xl shadow-sm" onClick={() => { setShowCreate(!showCreate); if (showCreate) { setResult(null); setPrompt(""); setFiles([]); setSelectedContacts([]); setCampaignName(""); } }}>
+          {showCreate ? <ChevronUp className="h-4 w-4 mr-1.5" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
+          {showCreate ? "Close" : "New"}
         </Button>
       </div>
 
-      {/* Create panel */}
       {showCreate && (
-        <Card className="border-primary/20 shadow-md">
-          <CardContent className="p-8 space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-              {/* Left: Form */}
-              <div className="lg:col-span-3 space-y-6">
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground mb-1">Create Broadcast</h2>
-                  <p className="text-sm text-muted-foreground">AI generates a professional email from your description</p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Campaign name</label>
-                  <Input
-                    placeholder="e.g. Q3 Product Launch"
-                    value={campaignName}
-                    onChange={(e) => setCampaignName(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">What is this broadcast about?</label>
-                  <Textarea
-                    placeholder="Describe the email you want. AI already knows who the recipients are."
-                    rows={4}
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Recipients</label>
-                  <ContactSelect
-                    multiple
-                    selected={selectedContacts}
-                    onChange={setSelectedContacts}
-                    placeholder="Search and select contacts..."
-                  />
-                  {selectedContacts.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {selectedContacts.length} contact(s) selected
-                      {selectedContacts.length > 0 && (
-                        <> — e.g. <span className="font-medium text-foreground">
-                          {[selectedContacts[0].first_name, selectedContacts[0].last_name].filter(Boolean).join(" ") || selectedContacts[0].email}
-                        </span></>
-                      )}
-                    </p>
-                  )}
-                </div>
-
-                {/* Files */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Attachments (optional)</label>
-                  <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} accept="image/*,.pdf,.doc,.docx,.txt" />
-                  <div className="flex flex-wrap gap-2">
-                    {files.map((f, i) => (
-                      <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-card text-sm">
-                        {fileIcon(f.mime)}
-                        <span className="text-foreground truncate max-w-[120px]">{f.name}</span>
-                        <button onClick={() => removeFile(i)} className="hover:text-destructive ml-1"><X className="h-3.5 w-3.5" /></button>
-                      </div>
-                    ))}
-                    {files.length < 5 && (
-                      <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed text-sm text-muted-foreground hover:text-foreground transition-colors">
-                        <Upload className="h-4 w-4" /> Add file
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <Button
-                  onClick={generateEmail}
-                  disabled={generating || !prompt.trim() || selectedContacts.length === 0 || !campaignName.trim()}
-                  size="lg"
-                  className="w-full"
-                >
-                  {generating ? (
-                    <><Loader2 className="h-5 w-5 mr-2 animate-spin" />Generating...</>
-                  ) : (
-                    <><Sparkles className="h-5 w-5 mr-2" />Generate Broadcast</>
-                  )}
-                </Button>
+        <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm p-5 space-y-5">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+            <div className="lg:col-span-3 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Campaign name</label>
+                <Input placeholder="e.g. Q3 Product Launch" value={campaignName} onChange={(e) => setCampaignName(e.target.value)} className="rounded-xl h-9" />
               </div>
-
-              {/* Right: Preview */}
-              <div className="lg:col-span-2">
-                <div className="sticky top-6">
-                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                    <Eye className="h-4 w-4" /> Preview
-                  </h3>
-                  {result ? (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">Subject</label>
-                        <Input value={editSubject} onChange={(e) => setEditSubject(e.target.value)} className="text-sm font-medium" />
-                      </div>
-                      <iframe srcDoc={editHtml} className="w-full h-60 rounded-lg border" title="Preview" sandbox="allow-same-origin" />
-                      <div>
-                        <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">HTML</label>
-                        <Textarea value={editHtml} onChange={(e) => setEditHtml(e.target.value)} rows={6} className="text-xs font-mono" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">Plain text</label>
-                        <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={3} className="text-xs font-mono" />
-                      </div>
-                      <Button onClick={sendBroadcast} disabled={sending} className="w-full" size="lg">
-                        {sending ? (
-                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending to {selectedContacts.length} contact(s)...</>
-                        ) : (
-                          <><Send className="h-4 w-4 mr-2" />Send to {selectedContacts.length} contact(s)</>
-                        )}
-                      </Button>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">What is this broadcast about?</label>
+                <Textarea placeholder="Describe the email you want. AI already knows who the recipients are." rows={4} value={prompt} onChange={(e) => setPrompt(e.target.value)} className="rounded-xl" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Recipients</label>
+                <ContactSelect multiple selected={selectedContacts} onChange={setSelectedContacts} placeholder="Search and select contacts..." />
+                {selectedContacts.length > 0 && <p className="text-xs text-muted-foreground">{selectedContacts.length} contact(s) selected</p>}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Attachments (optional)</label>
+                <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} accept="image/*,.pdf,.doc,.docx,.txt" />
+                <div className="flex flex-wrap gap-1.5">
+                  {files.map((f, i) => (
+                    <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-border/40 bg-card/60 text-xs">
+                      {fileIcon(f.mime)}
+                      <span className="text-foreground truncate max-w-[120px]">{f.name}</span>
+                      <button onClick={() => removeFile(i)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
                     </div>
-                  ) : (
-                    <div className="rounded-lg border-2 border-dashed p-8 text-center">
-                      <Megaphone className="h-10 w-10 text-gray-300 mx-auto mb-2 dark:text-gray-600" />
-                      <p className="text-sm text-muted-foreground">
-                        {generating ? "Generating your email..." : "Generated preview will appear here"}
-                      </p>
-                    </div>
+                  ))}
+                  {files.length < 5 && (
+                    <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1 rounded-xl border border-dashed border-border/60 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      <Upload className="h-3.5 w-3.5" /> Add file
+                    </button>
                   )}
                 </div>
+              </div>
+              <Button onClick={generateEmail} disabled={generating || !prompt.trim() || selectedContacts.length === 0 || !campaignName.trim()} size="lg" className="w-full rounded-xl shadow-sm">
+                {generating ? <><Loader2 className="h-5 w-5 mr-2 animate-spin" />Generating...</> : <><Sparkles className="h-5 w-5 mr-2" />Generate Broadcast</>}
+              </Button>
+            </div>
+
+            <div className="lg:col-span-2">
+              <div className="sticky top-6">
+                <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-3"><Eye className="h-3.5 w-3.5" />Preview</span>
+                {result ? (
+                  <div className="space-y-4">
+                    <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Subject</label><Input value={editSubject} onChange={(e) => setEditSubject(e.target.value)} className="text-sm font-medium rounded-xl h-9" /></div>
+                    <iframe srcDoc={editHtml} className="w-full h-48 rounded-xl border border-border/40" title="Preview" sandbox="allow-same-origin" />
+                    <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">HTML</label><Textarea value={editHtml} onChange={(e) => setEditHtml(e.target.value)} rows={4} className="text-xs font-mono rounded-xl" /></div>
+                    <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Plain text</label><Textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={2} className="text-xs font-mono rounded-xl" /></div>
+                    <Button onClick={sendBroadcast} disabled={sending} className="w-full rounded-xl shadow-sm" size="lg">
+                      {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Sending to {selectedContacts.length} contact(s)...</> : <><Send className="h-4 w-4 mr-1.5" />Send to {selectedContacts.length} contact(s)</>}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border-2 border-dashed border-border/40 p-8 text-center">
+                    <Megaphone className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">{generating ? "Generating..." : "Preview will appear here"}</p>
+                  </div>
+                )}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Past broadcasts */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Past Campaigns</h2>
-        {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading...</div>
-        ) : broadcasts.length === 0 && !showCreate ? (
-          <Card>
-            <CardContent className="text-center py-16">
-              <Megaphone className="h-12 w-12 text-gray-300 mx-auto mb-3 dark:text-gray-600" />
-              <p className="text-muted-foreground mb-1">No broadcasts yet</p>
-              <p className="text-xs text-muted-foreground mb-4">Create your first campaign to reach your audience</p>
-              <Button onClick={() => setShowCreate(true)}>
-                <Sparkles className="h-4 w-4 mr-2" />Create Broadcast
-              </Button>
-            </CardContent>
-          </Card>
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold tracking-tight text-foreground/80">Past Campaigns</h2>
+        {loading ? <div className="text-center py-12 text-sm text-muted-foreground">Loading...</div>
+        : broadcasts.length === 0 && !showCreate ? (
+          <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm text-center py-12">
+            <Megaphone className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground mb-1">No broadcasts yet</p>
+            <p className="text-xs text-muted-foreground mb-4">Create your first campaign to reach your audience</p>
+            <Button size="sm" className="h-9 rounded-xl shadow-sm" onClick={() => setShowCreate(true)}><Sparkles className="h-4 w-4 mr-1.5" />Create</Button>
+          </div>
         ) : (
-          <div className="space-y-2">
-            {broadcasts.map((b: any) => (
-              <button
-                key={b.id}
-                onClick={() => setAnalyticsBroadcast(b)}
-                className="w-full text-left flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-3">
-                    <p className="font-medium text-foreground truncate">{b.name}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      b.status === "sent" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                      b.status === "failed" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
-                      "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                    }`}>{b.status}</span>
+          <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm overflow-hidden">
+            <div className="p-2 space-y-1">
+              {broadcasts.map((b: any) => (
+                <button key={b.id} onClick={() => setAnalyticsBroadcast(b)} className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/40 transition-colors">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><Megaphone className="h-4 w-4 text-primary" /></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium truncate">{b.name}</p>
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${
+                        b.status === "sent" ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400" :
+                        b.status === "failed" ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400" :
+                        "bg-muted/60 text-muted-foreground"
+                      }`}>{b.status}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{b.subject} — {b.total_sent || 0} sent, {b.total_opened || 0} opened</p>
                   </div>
-                  <p className="text-sm text-muted-foreground truncate mt-0.5">
-                    {b.subject} — {b.total_sent || 0} sent, {b.total_opened || 0} opened
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 ml-4">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(b.sent_at || b.created_at)}</span>
-                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(b.id); }}>
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-              </button>
-            ))}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] text-muted-foreground">{formatDateTime(b.sent_at || b.created_at)}</span>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(b.id); }} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
-      </div>
 
       <Dialog open={!!analyticsBroadcast} onOpenChange={() => setAnalyticsBroadcast(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{analyticsBroadcast?.name || "Campaign Analytics"}</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader><DialogTitle>{analyticsBroadcast?.name || "Campaign Analytics"}</DialogTitle></DialogHeader>
           {analyticsBroadcast && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">{analyticsBroadcast.subject}</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-lg bg-muted text-center">
-                  <p className="text-2xl font-bold">{analyticsBroadcast.total_sent || 0}</p>
-                  <p className="text-xs text-muted-foreground">Sent</p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted text-center">
-                  <p className="text-2xl font-bold">{analyticsBroadcast.total_opened || 0}</p>
-                  <p className="text-xs text-muted-foreground">Opened</p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted text-center">
-                  <p className="text-2xl font-bold">{analyticsBroadcast.total_clicked || 0}</p>
-                  <p className="text-xs text-muted-foreground">Clicked</p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted text-center">
-                  <p className="text-2xl font-bold">
-                    {analyticsBroadcast.total_sent > 0
-                      ? `${Math.round((analyticsBroadcast.total_opened / analyticsBroadcast.total_sent) * 100)}%`
-                      : "—"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Open Rate</p>
-                </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[{ label: "Sent", value: analyticsBroadcast.total_sent || 0 }, { label: "Opened", value: analyticsBroadcast.total_opened || 0 },
+                  { label: "Clicked", value: analyticsBroadcast.total_clicked || 0 },
+                  { label: "Open Rate", value: analyticsBroadcast.total_sent > 0 ? `${Math.round((analyticsBroadcast.total_opened / analyticsBroadcast.total_sent) * 100)}%` : "—" },
+                ].map((m) => (
+                  <div key={m.label} className="p-3 rounded-xl bg-muted/40 text-center">
+                    <p className="text-xl font-bold tracking-tight">{m.value}</p>
+                    <p className="text-[10px] text-muted-foreground">{m.label}</p>
+                  </div>
+                ))}
               </div>
-              {analyticsBroadcast.sent_at && (
-                <p className="text-xs text-muted-foreground">Sent: {formatDateTime(analyticsBroadcast.sent_at)}</p>
-              )}
+              {analyticsBroadcast.sent_at && <p className="text-[10px] text-muted-foreground">Sent: {formatDateTime(analyticsBroadcast.sent_at)}</p>}
             </div>
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </PageTransition>
   );
 }

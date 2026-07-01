@@ -1,13 +1,12 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/toast";
-import { Save, Mail, Key, Globe, Bell, Image, Trash2, Upload } from "lucide-react";
+import { Save, Mail, Key, Globe, Bell, Image, Trash2, Upload, Sparkles } from "lucide-react";
+import { PageTransition } from "@/components/page-transition";
 
 export default function SettingsPage() {
   const { addToast } = useToast();
@@ -21,7 +20,7 @@ export default function SettingsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFilename, setLogoFilename] = useState("");
   const [savingLogo, setSavingLogo] = useState(false);
-  const [companyName, setCompanyName] = useState("Xyberclan");
+  const [companyName, setCompanyName] = useState("Xmailo");
   const [tagline, setTagline] = useState("Email Management Platform");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,136 +112,93 @@ export default function SettingsPage() {
     addToast({ title: `${section} settings saved`, variant: "success" });
   };
 
-  return (
-    <div className="max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground mt-1">Configure your email platform</p>
+  const sections = [
+    { key: "sending", icon: Mail, title: "Sending Configuration", color: "", content: (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Default From Name</Label><Input value={sending.fromName} onChange={(e) => setSending({ ...sending, fromName: e.target.value })} className="rounded-xl h-9" /></div>
+          <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Default From Email</Label><Input value={sending.fromEmail} onChange={(e) => setSending({ ...sending, fromEmail: e.target.value })} className="rounded-xl h-9" /></div>
+        </div>
+        <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Reply-To Address</Label><Input value={sending.replyTo} onChange={(e) => setSending({ ...sending, replyTo: e.target.value })} className="rounded-xl h-9" /></div>
+        <div className="flex justify-end"><Button onClick={() => handleSave("Sending")} className="rounded-xl shadow-sm"><Save className="h-4 w-4 mr-1.5" />Save</Button></div>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Mail className="h-5 w-5 text-foreground" />Sending Configuration</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label>Default From Name</Label><Input value={sending.fromName} onChange={(e) => setSending({ ...sending, fromName: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Default From Email</Label><Input value={sending.fromEmail} onChange={(e) => setSending({ ...sending, fromEmail: e.target.value })} /></div>
+    )},
+    { key: "signature", icon: Globe, title: "Email Signature", color: "text-purple-500", content: (
+      <div className="space-y-4">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Full Name</Label><Input value={signature.name} onChange={(e) => setSignature({ ...signature, name: e.target.value })} className="rounded-xl h-9" /></div>
+          <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Title</Label><Input value={signature.title} onChange={(e) => setSignature({ ...signature, title: e.target.value })} className="rounded-xl h-9" /></div>
+          <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Company</Label><Input value={signature.company} onChange={(e) => setSignature({ ...signature, company: e.target.value })} className="rounded-xl h-9" /></div>
+        </div>
+        <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Photo URL (optional)</Label><Input value={signature.logo} onChange={(e) => setSignature({ ...signature, logo: e.target.value })} className="rounded-xl h-9" /></div>
+        <div className="bg-muted/40 rounded-xl p-3 text-xs">
+          <p className="font-medium mb-1">Preview:</p>
+          <p>{signature.name}</p>
+          <p className="text-muted-foreground">{signature.title}, {signature.company}</p>
+        </div>
+        <div className="flex justify-end"><Button onClick={handleSaveSignature} disabled={savingSig} className="rounded-xl shadow-sm"><Save className="h-4 w-4 mr-1.5" />{savingSig ? "Saving..." : "Save"}</Button></div>
+      </div>
+    )},
+    { key: "webhooks", icon: Bell, title: "Webhooks", color: "text-orange-500", content: (
+      <div className="space-y-4">
+        <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Resend Webhook URL</Label><Input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} className="rounded-xl h-9" /></div>
+        <div className="bg-muted/40 rounded-xl p-4 space-y-2">
+          <p className="text-xs font-medium">Your webhook endpoint:</p>
+          <code className="text-xs bg-background/80 px-3 py-2 rounded-lg border border-border/40 block">{origin}/api/webhooks</code>
+        </div>
+        <div className="flex justify-end"><Button onClick={() => handleSave("Webhook")} className="rounded-xl shadow-sm"><Save className="h-4 w-4 mr-1.5" />Save</Button></div>
+      </div>
+    )},
+    { key: "brand", icon: Image, title: "Brand", color: "text-emerald-500", content: (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Company Name</Label><Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="rounded-xl h-9" /></div>
+          <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Tagline</Label><Input value={tagline} onChange={(e) => setTagline(e.target.value)} className="rounded-xl h-9" /></div>
+        </div>
+        <div className="h-px bg-border/40" />
+        <div className="flex items-start gap-5">
+          <div className="shrink-0 w-40 h-20 rounded-xl border-2 border-dashed border-border/60 flex items-center justify-center overflow-hidden bg-muted/30">
+            {logoPreview ? <img src={logoPreview} alt="Logo" className="max-w-full max-h-full object-contain p-2" /> : <p className="text-[10px] text-muted-foreground text-center px-2">No logo</p>}
           </div>
-          <div className="space-y-2"><Label>Reply-To Address</Label><Input value={sending.replyTo} onChange={(e) => setSending({ ...sending, replyTo: e.target.value })} /></div>
-          <div className="flex justify-end"><Button onClick={() => handleSave("Sending")}><Save className="h-4 w-4 mr-2" />Save</Button></div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5 text-purple-600" />Email Signature</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2"><Label>Full Name</Label><Input value={signature.name} onChange={(e) => setSignature({ ...signature, name: e.target.value })} placeholder="Jane Doe" /></div>
-            <div className="space-y-2"><Label>Title</Label><Input value={signature.title} onChange={(e) => setSignature({ ...signature, title: e.target.value })} placeholder="CEO" /></div>
-            <div className="space-y-2"><Label>Company</Label><Input value={signature.company} onChange={(e) => setSignature({ ...signature, company: e.target.value })} placeholder="Xyberclan" /></div>
-          </div>
-          <div className="space-y-2"><Label>Photo URL (optional)</Label><Input value={signature.logo} onChange={(e) => setSignature({ ...signature, logo: e.target.value })} placeholder="https://example.com/photo.jpg" /></div>
-          <div className="bg-muted rounded-lg p-3 text-xs">
-            <p className="font-medium mb-1">Preview:</p>
-            <p>{signature.name}</p>
-            <p className="text-muted-foreground">{signature.title}, {signature.company}</p>
-          </div>
-          <div className="flex justify-end"><Button onClick={handleSaveSignature} disabled={savingSig}><Save className="h-4 w-4 mr-2" />{savingSig ? "Saving..." : "Save Signature"}</Button></div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Bell className="h-5 w-5 text-orange-600" />Webhooks</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Resend Webhook URL</Label>
-            <Input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://resend.com/webhooks/..." />
-            <p className="text-xs text-muted-foreground">Configure this URL in your Resend dashboard to receive delivery events</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4 space-y-2 dark:bg-gray-800">
-            <p className="text-sm font-medium">Your webhook endpoint:</p>
-            <code className="text-sm bg-white dark:bg-card px-3 py-2 rounded border block">{origin}/api/webhooks</code>
-          </div>
-          <div className="flex justify-end"><Button onClick={() => handleSave("Webhook")}><Save className="h-4 w-4 mr-2" />Save</Button></div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Image className="h-5 w-5 text-emerald-600" />Brand</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Company Name</Label>
-              <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Xyberclan" />
+          <div className="space-y-3 flex-1">
+            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="hidden" onChange={handleLogoFile} />
+            <Button variant="ghost" size="sm" className="h-9 rounded-xl" onClick={() => fileInputRef.current?.click()}><Upload className="h-4 w-4 mr-1.5" />Choose Image</Button>
+            {logoFile && <p className="text-xs text-muted-foreground">{logoFile.name} ({(logoFile.size / 1024).toFixed(1)} KB)</p>}
+            <div className="flex gap-2">
+              <Button size="sm" className="h-9 rounded-xl shadow-sm" onClick={handleLogoUpload} disabled={savingLogo}><Save className="h-4 w-4 mr-1.5" />{savingLogo ? "Saving..." : "Save Brand"}</Button>
+              {logoPreview && <Button variant="ghost" size="sm" className="h-9 rounded-xl text-red-500 hover:text-red-600" onClick={handleLogoDelete}><Trash2 className="h-4 w-4 mr-1.5" />Remove</Button>}
             </div>
-            <div className="space-y-2">
-              <Label>Tagline</Label>
-              <Input value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Email Management Platform" />
-            </div>
+            <p className="text-[10px] text-muted-foreground">Logo appears at the top of sent emails. Recommended: square PNG, min 100x100px.</p>
           </div>
-          <Separator />
-          <div className="flex items-start gap-6">
-            <div className="flex-shrink-0 w-48 h-24 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800/50">
-              {logoPreview ? (
-                <img src={logoPreview} alt="Logo preview" className="max-w-full max-h-full object-contain p-2" />
-              ) : (
-                <p className="text-xs text-muted-foreground text-center px-2">No logo set</p>
-              )}
-            </div>
-            <div className="space-y-3 flex-1">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                className="hidden"
-                onChange={handleLogoFile}
-              />
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="h-4 w-4 mr-2" />
-                Choose Image
-              </Button>
-              {logoFile && (
-                <p className="text-sm text-muted-foreground">{logoFile.name} ({(logoFile.size / 1024).toFixed(1)} KB)</p>
-              )}
-              <div className="flex gap-2">
-                  <Button onClick={handleLogoUpload} disabled={savingLogo}>
-                    <Save className="h-4 w-4 mr-2" />
-                    {savingLogo ? "Saving..." : "Save Brand"}
-                  </Button>
-                {logoPreview && (
-                  <Button variant="destructive" onClick={handleLogoDelete}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Remove Logo
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Logo appears at the top of sent emails. Recommended: square PNG, min 100x100px.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+    )},
+    { key: "api", icon: Key, title: "API Keys", color: "text-red-500", content: (
+      <div className="space-y-4">
+        <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Resend API Key</Label><Input type="password" value="••••••••••••••••" disabled className="rounded-xl h-9 opacity-60" /></div>
+        <p className="text-[10px] text-muted-foreground">Configured via RESEND_API_KEY environment variable</p>
+      </div>
+    )},
+  ];
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Key className="h-5 w-5 text-red-600" />API Keys</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Resend API Key</Label>
-            <Input type="password" value="••••••••••••••••" disabled />
-            <p className="text-xs text-muted-foreground">Configured via RESEND_API_KEY environment variable</p>
+  return (
+    <PageTransition>
+      <div className="max-w-3xl space-y-5">
+        <div>
+          <h1 className="text-[28px] font-bold tracking-tight">Settings</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Configure your email platform</p>
+        </div>
+
+        {sections.map((s) => (
+          <div key={s.key} className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <s.icon className={`h-5 w-5 ${s.color} opacity-60`} />
+              <h2 className="text-base font-semibold tracking-tight">{s.title}</h2>
+            </div>
+            {s.content}
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        ))}
+      </div>
+    </PageTransition>
   );
 }

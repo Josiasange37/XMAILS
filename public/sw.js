@@ -1,4 +1,4 @@
-const CACHE = "xyberclan-v1";
+const CACHE = "xmailo-v1";
 const ASSETS = ["/", "/dashboard", "/manifest.json", "/icons/icon.svg"];
 
 self.addEventListener("install", (e) => {

@@ -25,11 +25,8 @@ export async function GET() {
     }));
 
     return NextResponse.json({ emails: mapped });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to fetch inbox" },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ emails: [] });
   }
 }
 

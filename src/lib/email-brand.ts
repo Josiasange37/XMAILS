@@ -66,7 +66,7 @@ export async function deleteLogoFromStorage(filename?: string) {
 export function injectLogoIntoHtml(html: string, logoUrl: string, companyName?: string, tagline?: string): string {
   if (!logoUrl) return html;
 
-  const name = companyName || "Xyberclan";
+  const name = companyName || "Xmailo";
   const desc = tagline || "Email Management Platform";
 
   const logoHtml = `

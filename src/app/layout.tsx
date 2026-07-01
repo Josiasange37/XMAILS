@@ -5,13 +5,13 @@ import { PWARegister } from "@/components/pwa-register";
 import { ErrorLogger } from "@/components/error-logger";
 
 export const metadata: Metadata = {
-  title: "Xyberclan - Email Management Platform",
-  description: "Manage your emails, audiences, broadcasts, and automations with Resend",
+  title: "Xmailo — Smart Email Platform by Xyberclan",
+  description: "Xmailo is a modern email management platform built by Xyberclan. Smart compose, scheduling, tracking, and AI-powered replies — all in your browser.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Xyberclan",
+    title: "Xmailo",
   },
   icons: {
     icon: "/icons/icon.svg",
@@ -29,9 +29,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
+      <body className="antialiased font-sans">
         <script dangerouslySetInnerHTML={{
-          __html: `(function(){try{var t=localStorage.getItem("theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.classList.toggle("dark",t==="dark")}catch(e){}})()`
+          __html: `(function(){try{var t=localStorage.getItem("theme")||"dark";document.documentElement.classList.toggle("dark",t==="dark")}catch(e){}})()`
         }} />
         <ThemeProvider>
           <ErrorLogger />

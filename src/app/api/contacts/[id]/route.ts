@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 
+function validateEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -36,17 +40,26 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json();
-    const { firstName, lastName, customFields, ...rest } = body;
+    const { email, first_name, last_name, company, tags } = body;
+
+    if (email !== undefined && !validateEmail(email)) {
+      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+    }
+
+    if (tags !== undefined && (!Array.isArray(tags) || tags.some((t: any) => typeof t !== "string"))) {
+      return NextResponse.json({ error: "Tags must be an array of strings" }, { status: 400 });
+    }
+
+    const updateData: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (email !== undefined) updateData.email = email.toLowerCase().trim();
+    if (first_name !== undefined) updateData.first_name = first_name;
+    if (last_name !== undefined) updateData.last_name = last_name;
+    if (company !== undefined) updateData.company = company;
+    if (tags !== undefined) updateData.tags = tags;
 
     const { data: contact, error } = await db
       .from("contacts")
-      .update({
-        ...rest,
-        ...(firstName !== undefined && { first_name: firstName }),
-        ...(lastName !== undefined && { last_name: lastName }),
-        ...(customFields !== undefined && { custom_fields: customFields }),
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("id", params.id)
       .select()
       .maybeSingle();

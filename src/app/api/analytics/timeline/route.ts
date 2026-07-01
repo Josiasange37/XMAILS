@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
 
 export async function GET() {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json({ timeline: [] });
+    }
+
+    const { createClient } = await import("@supabase/supabase-js");
+    const db = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+
     const since = new Date();
     since.setDate(since.getDate() - 7);
 
@@ -52,10 +61,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ timeline });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to fetch timeline" },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ timeline: [] });
   }
 }
