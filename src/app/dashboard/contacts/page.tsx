@@ -31,10 +31,12 @@ export default function ContactsPage() {
   const [showImport, setShowImport] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [showDeduplicate, setShowDeduplicate] = useState(false);
   const [showDeleteOne, setShowDeleteOne] = useState<string | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importFullData, setImportFullData] = useState<any[]>([]);
+  const [importCategory, setImportCategory] = useState<string>("follower");
   const [importing, setImporting] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -218,6 +220,27 @@ export default function ContactsPage() {
     } catch {} finally { setDeletingAll(false); }
   };
 
+  // Deduplicate
+  const [deduplicating, setDeduplicating] = useState(false);
+
+  const handleDeduplicate = async () => {
+    setDeduplicating(true);
+    try {
+      const res = await fetch("/api/contacts/deduplicate", { method: "DELETE" });
+      if (res.ok) {
+        const data = await res.json();
+        addToast({ title: data.message || `Removed ${data.deleted} duplicate(s)`, variant: "success" });
+        setShowDeduplicate(false);
+        fetchContacts(1);
+      } else {
+        const err = await res.json();
+        addToast({ title: "Error", description: err.error || "Failed to deduplicate", variant: "destructive" });
+      }
+    } catch {
+      addToast({ title: "Error", description: "Failed to deduplicate", variant: "destructive" });
+    } finally { setDeduplicating(false); }
+  };
+
   // === BULK ADD ===
   const parseBulkEmails = (raw: string) => {
     const lines = raw.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
@@ -362,7 +385,7 @@ export default function ContactsPage() {
       first_name: r.first_name || undefined,
       last_name: r.last_name || undefined,
       company: r.company || undefined,
-      tags: (r.tags || "").split(",").map((s: string) => s.trim()).filter(Boolean),
+      tags: importCategory ? [importCategory, ...(r.tags || "").split(",").map((s: string) => s.trim()).filter(Boolean)] : (r.tags || "").split(",").map((s: string) => s.trim()).filter(Boolean),
     })).filter((c: any) => c.email);
 
     const results = await Promise.allSettled(
@@ -384,7 +407,7 @@ export default function ContactsPage() {
     if (duplicateList.length) parts.push(`${duplicateList.length} already existed`);
     if (failedList.length) parts.push(`${failedList.length} failed: ${failedList.join(", ")}`);
     addToast({ title: parts.join(", "), variant: "success" });
-    setShowImport(false); setImportFile(null); setImportPreview([]); setImportFullData([]);
+    setShowImport(false); setImportFile(null); setImportPreview([]); setImportFullData([]); setImportCategory("follower");
     fetchContacts(1);
     setImporting(false);
   };
@@ -402,9 +425,14 @@ export default function ContactsPage() {
         <div className="flex gap-1.5">
           <Button variant="ghost" size="sm" className="h-9 rounded-xl" onClick={() => fetchContacts(1)}><RefreshCw className="h-4 w-4" /></Button>
           {contacts.length > 0 && (
-            <Button variant="ghost" size="sm" className="h-9 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => setShowDeleteAll(true)}>
-              <Trash2 className="h-4 w-4 mr-1.5" />Delete All
-            </Button>
+            <>
+              <Button variant="ghost" size="sm" className="h-9 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => setShowDeleteAll(true)}>
+                <Trash2 className="h-4 w-4 mr-1.5" />Delete All
+              </Button>
+              <Button variant="ghost" size="sm" className="h-9 rounded-xl" onClick={() => setShowDeduplicate(true)}>
+                <RefreshCw className="h-4 w-4 mr-1.5" />Deduplicate
+              </Button>
+            </>
           )}
           <Button variant="ghost" size="sm" className="h-9 rounded-xl" onClick={() => setShowBulk(true)}>
             <ClipboardPaste className="h-4 w-4" />
@@ -706,7 +734,7 @@ export default function ContactsPage() {
       </Dialog>
 
       {/* === Import Dialog (CSV / Excel) === */}
-      <Dialog open={showImport} onOpenChange={setShowImport}>
+      <Dialog open={showImport} onOpenChange={(o) => { if (!o) { setShowImport(false); setImportFile(null); setImportPreview([]); setImportFullData([]); setImportCategory("follower"); } }}>
         <DialogContent className="rounded-2xl">
           <DialogHeader><DialogTitle>Import Contacts</DialogTitle></DialogHeader>
           <div className="space-y-4">
@@ -730,9 +758,23 @@ export default function ContactsPage() {
                 </div>
               </div>
             )}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                <Tags className="h-3.5 w-3.5 inline mr-1 -mt-0.5" />
+                Default Category for Imported Contacts
+              </Label>
+              <Select
+                value={importCategory}
+                onChange={(e) => setImportCategory(e.target.value)}
+                options={CATEGORY_OPTIONS}
+                placeholder="Select a category..."
+                className="rounded-xl h-9"
+              />
+              <p className="text-[11px] text-muted-foreground">All imported contacts will be tagged with this category</p>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" className="rounded-xl" onClick={() => setShowImport(false)}>Cancel</Button>
+            <Button variant="ghost" className="rounded-xl" onClick={() => { setShowImport(false); setImportFile(null); setImportPreview([]); setImportFullData([]); setImportCategory("follower"); }}>Cancel</Button>
             <Button className="rounded-xl shadow-sm" onClick={handleImportFile} disabled={importFullData.length === 0 || importing}>
               {importing ? "Importing..." : `Import ${importFullData.length}`}
             </Button>
@@ -772,6 +814,26 @@ export default function ContactsPage() {
             <Button variant="ghost" className="rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleDeleteAll} disabled={deletingAll}>
               {deletingAll ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1.5" />}
               Delete All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* === Deduplicate Dialog === */}
+      <Dialog open={showDeduplicate} onOpenChange={setShowDeduplicate}>
+        <DialogContent className="rounded-2xl max-w-sm">
+          <DialogHeader><DialogTitle>Deduplicate Contacts?</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30">
+              <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+              <p className="text-sm text-amber-600 dark:text-amber-400">This will remove duplicate contacts (same email), keeping the oldest entry for each email. This action cannot be undone.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" className="rounded-xl" onClick={() => setShowDeduplicate(false)}>Cancel</Button>
+            <Button variant="ghost" className="rounded-xl text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20" onClick={handleDeduplicate} disabled={deduplicating}>
+              {deduplicating ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+              Deduplicate
             </Button>
           </DialogFooter>
         </DialogContent>
