@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
 import {
   Plus, Search, RefreshCw, Users, Trash2, Upload, Loader2, X, Mail,
-  ClipboardPaste, AlertCircle, CheckCircle2, Ban, Pencil, ChevronDown, Tags, ChevronRight
+  ClipboardPaste, AlertCircle, CheckCircle2, Ban, Pencil, ChevronDown, Tags, ChevronRight, AlertTriangle
 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import Papa from "papaparse";
@@ -32,6 +32,7 @@ export default function ContactsPage() {
   const [showBulk, setShowBulk] = useState(false);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
   const [showDeduplicate, setShowDeduplicate] = useState(false);
+  const [showFixUncategorized, setShowFixUncategorized] = useState(false);
   const [showDeleteOne, setShowDeleteOne] = useState<string | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<any[]>([]);
@@ -241,6 +242,27 @@ export default function ContactsPage() {
     } finally { setDeduplicating(false); }
   };
 
+  // Fix uncategorized contacts
+  const [fixingUncategorized, setFixingUncategorized] = useState(false);
+
+  const handleFixUncategorized = async () => {
+    setFixingUncategorized(true);
+    try {
+      const res = await fetch("/api/contacts/fix-uncategorized", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        addToast({ title: data.message || `Fixed ${data.updated} uncategorized contact(s)`, variant: "success" });
+        setShowFixUncategorized(false);
+        fetchContacts(1);
+      } else {
+        const err = await res.json();
+        addToast({ title: "Error", description: err.error || "Failed to fix uncategorized", variant: "destructive" });
+      }
+    } catch {
+      addToast({ title: "Error", description: "Failed to fix uncategorized", variant: "destructive" });
+    } finally { setFixingUncategorized(false); }
+  };
+
   // === BULK ADD ===
   const parseBulkEmails = (raw: string) => {
     const lines = raw.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
@@ -431,6 +453,9 @@ export default function ContactsPage() {
               </Button>
               <Button variant="ghost" size="sm" className="h-9 rounded-xl" onClick={() => setShowDeduplicate(true)}>
                 <RefreshCw className="h-4 w-4 mr-1.5" />Deduplicate
+              </Button>
+              <Button variant="ghost" size="sm" className="h-9 rounded-xl" onClick={() => setShowFixUncategorized(true)}>
+                <AlertTriangle className="h-4 w-4 mr-1.5" />Fix Categories
               </Button>
             </>
           )}
@@ -834,6 +859,26 @@ export default function ContactsPage() {
             <Button variant="ghost" className="rounded-xl text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20" onClick={handleDeduplicate} disabled={deduplicating}>
               {deduplicating ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
               Deduplicate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* === Fix Uncategorized Dialog === */}
+      <Dialog open={showFixUncategorized} onOpenChange={setShowFixUncategorized}>
+        <DialogContent className="rounded-2xl max-w-sm">
+          <DialogHeader><DialogTitle>Fix Uncategorized Contacts?</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30">
+              <AlertCircle className="h-5 w-5 text-blue-500 shrink-0" />
+              <p className="text-sm text-blue-600 dark:text-blue-400">This will assign "follower" category to all contacts that don't have any category tag. Contacts with existing categories (sponsor, partner, friend, enterprise) are not affected.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" className="rounded-xl" onClick={() => setShowFixUncategorized(false)}>Cancel</Button>
+            <Button variant="ghost" className="rounded-xl text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20" onClick={handleFixUncategorized} disabled={fixingUncategorized}>
+              {fixingUncategorized ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Tags className="h-4 w-4 mr-1.5" />}
+              Fix Uncategorized
             </Button>
           </DialogFooter>
         </DialogContent>
