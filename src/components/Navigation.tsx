@@ -143,7 +143,7 @@ export default function Navigation() {
                 <rect x="24" y="6" width="6" height="14" rx="2" fill="black"/>
               </svg>
             </div>
-            <span>Xmailo</span>
+            <span>Xyberclan</span>
             <span
               className="hidden xs:inline text-[8px] sm:text-[9px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full tracking-wide"
               style={{ background: 'var(--bg-alt)', color: '#39d353' }}

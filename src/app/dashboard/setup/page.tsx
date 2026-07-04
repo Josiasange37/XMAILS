@@ -42,8 +42,8 @@ export default function SetupPage() {
 );
 
 INSERT INTO inbound_emails (from_email, to_email, subject, html, text) VALUES
-('john.doe@example.com', 'contact@xmailo.com', 'Partnership Inquiry', '<h1>Hello</h1><p>I would like to discuss a partnership with XMAILO.</p>', 'Hello, I would like to discuss a partnership with XMAILO.'),
-('sarah@acme.com', 'hello@xmailo.com', 'Speaker Confirmation', '<h1>Confirmed</h1><p>I confirm my participation as a speaker.</p>', 'I confirm my participation as a speaker.')
+('john.doe@example.com', 'contact@xyberclan.dev', 'Partnership Inquiry', '<h1>Hello</h1><p>I would like to discuss a partnership with XYBERCLAN.</p>', 'Hello, I would like to discuss a partnership with XYBERCLAN.'),
+('sarah@acme.com', 'hello@xyberclan.dev', 'Speaker Confirmation', '<h1>Confirmed</h1><p>I confirm my participation as a speaker.</p>', 'I confirm my participation as a speaker.')
 ON CONFLICT DO NOTHING;`;
 
   const copySQL = () => {

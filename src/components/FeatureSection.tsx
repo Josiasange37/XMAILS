@@ -123,7 +123,7 @@ export default function FeatureSection() {
         <div ref={phoneRef} className="relative w-full max-w-[min(90vw,800px)]">
           <img
             src="/hand-phone-dark.png"
-            alt="Xmailo mobile email interface"
+            alt="Xyberclan mobile email interface"
             className="w-full h-auto object-contain"
             style={{
               filter: 'drop-shadow(0 40px 120px rgba(167,139,250,0.12))',

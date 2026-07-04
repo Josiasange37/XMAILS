@@ -226,7 +226,7 @@ export function Sidebar() {
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
               <Mail className="h-[18px] w-[18px] text-primary" />
             </div>
-            <span className="font-bold text-base text-foreground">Xmailo</span>
+            <span className="font-bold text-base text-foreground">Xyberclan</span>
           </div>
           <nav className="flex-1 overflow-y-auto space-y-0.5">
             {navigation.map((item) => navLink(item, true))}

@@ -113,6 +113,7 @@ export default function BroadcastSentPage() {
     setSending(true);
     let sentCount = 0;
     let failCount = 0;
+    let lastError = "";
     for (const contact of selectedContacts) {
       try {
         const res = await fetch("/api/emails", {
@@ -128,9 +129,13 @@ export default function BroadcastSentPage() {
         });
         const data = await res.json();
         if (res.ok) sentCount++;
-        else failCount++;
-      } catch {
+        else {
+          failCount++;
+          lastError = data?.error || res.statusText;
+        }
+      } catch (err: any) {
         failCount++;
+        lastError = err?.message || "Network error";
       }
     }
     if (sentCount > 0) {
@@ -140,7 +145,7 @@ export default function BroadcastSentPage() {
       setFiles([]);
       setSelectedContacts([]);
     } else {
-      addToast({ title: "Failed to send", description: "All sends failed", variant: "destructive" });
+      addToast({ title: "Failed to send", description: lastError || "All sends failed", variant: "destructive" });
     }
     setSending(false);
   };

@@ -49,7 +49,7 @@ export default function FooterSection() {
               Email that works<br />as hard as you do
             </h3>
             <p className="text-[13px] leading-[1.7] mb-6 pr-4" style={{ color: 'var(--footer-text)' }}>
-              Xmailo is a modern email platform built for people who live in their inbox. Whether you&apos;re a solo founder, a growing team, or a power user, Xmailo gives you the tools to write faster, send smarter, and stay on top of every conversation — all from your browser, no install required.
+              Xyberclan is a modern email platform built for people who live in their inbox. Whether you&apos;re a solo founder, a growing team, or a power user, Xyberclan gives you the tools to write faster, send smarter, and stay on top of every conversation — all from your browser, no install required.
             </p>
             <Link href="#features" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-colors" style={{ background: 'var(--bg-alt)', color: 'var(--footer-heading)', border: '1px solid var(--border)' }}>
               Read more
@@ -65,10 +65,10 @@ export default function FooterSection() {
               A reliable web app<br />is all you need
             </h3>
             <p className="text-[13px] leading-[1.7] mb-4 pr-4" style={{ color: 'var(--footer-text)' }}>
-              Forget heavy desktop clients and clunky installs. Xmailo runs entirely in your browser — fast, secure, and always up to date. Access your inbox from any device, anywhere in the world, with zero setup.
+              Forget heavy desktop clients and clunky installs. Xyberclan runs entirely in your browser — fast, secure, and always up to date. Access your inbox from any device, anywhere in the world, with zero setup.
             </p>
             <p className="text-[13px] leading-[1.7]" style={{ color: 'var(--footer-text)' }}>
-              Why Xmailo stands out from the crowd
+              Why Xyberclan stands out from the crowd
             </p>
             <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none" style={{ background: 'linear-gradient(to top, var(--bg) 0%, transparent 100%)' }} />
           </div>
@@ -79,10 +79,10 @@ export default function FooterSection() {
               Start in seconds with<br />an intuitive interface
             </h3>
             <p className="text-[13px] leading-[1.7] mb-4 pr-4" style={{ color: 'var(--footer-text)' }}>
-              Smart compose, one-click scheduling, read receipts, and AI-assisted replies — Xmailo brings the tools you always wished your email had, without the learning curve. Sign up and be composing in under a minute.
+              Smart compose, one-click scheduling, read receipts, and AI-assisted replies — Xyberclan brings the tools you always wished your email had, without the learning curve. Sign up and be composing in under a minute.
             </p>
             <p className="text-[13px] leading-[1.7]" style={{ color: 'var(--footer-text)' }}>
-              Xmailo&apos;s Help Center has everything you need to
+              Xyberclan&apos;s Help Center has everything you need to
             </p>
              <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none" style={{ background: 'linear-gradient(to top, var(--bg) 0%, transparent 100%)' }} />
           </div>
@@ -127,7 +127,7 @@ export default function FooterSection() {
                 No download needed.<br />Works in any browser
               </span>
               <Link href="/dashboard" className="text-[#39d353] text-[13px] font-semibold hover:underline flex items-center gap-1.5">
-                Open Xmailo now
+                Open Xyberclan now
                 <svg width="6" height="10" viewBox="0 0 6 10" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M1 1L5 5L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -205,14 +205,14 @@ export default function FooterSection() {
                 <rect x="16" y="0" width="6" height="20" rx="2" fill="currentColor"/>
                 <rect x="24" y="6" width="6" height="14" rx="2" fill="currentColor"/>
               </svg>
-              Xmailo
+              Xyberclan
             </Link>
             <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
-              &copy; {new Date().getFullYear()} Xmailo by <a href="https://xyberclan.me" target="_blank" rel="noopener noreferrer" className="hover:underline transition-colors" style={{ color: 'var(--text-secondary)' }}>Xyberclan</a>. All rights reserved.
+              &copy; {new Date().getFullYear()} Xyberclan by <a href="https://xyberclan.me" target="_blank" rel="noopener noreferrer" className="hover:underline transition-colors" style={{ color: 'var(--text-secondary)' }}>Xyberclan</a>. All rights reserved.
             </p>
           </div>
           <p className="text-[11px] leading-[1.7] max-w-[900px]" style={{ color: 'var(--text-tertiary)' }}>
-            Xmailo is a web-based email productivity platform. All email processing is handled securely in the cloud. By using Xmailo, you agree to our Terms of Service and Privacy Policy. Xmailo does not sell your data to third parties.
+            Xyberclan is a web-based email productivity platform. All email processing is handled securely in the cloud. By using Xyberclan, you agree to our Terms of Service and Privacy Policy. Xyberclan does not sell your data to third parties.
           </p>
           <div className="flex gap-8 mt-2">
             <Link href="/privacy" className="text-[12.5px] transition-colors" style={{ color: 'var(--footer-text)' }}>Privacy Policy</Link>

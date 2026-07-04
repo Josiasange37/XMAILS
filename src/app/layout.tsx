@@ -5,13 +5,13 @@ import { PWARegister } from "@/components/pwa-register";
 import { ErrorLogger } from "@/components/error-logger";
 
 export const metadata: Metadata = {
-  title: "Xmailo — Smart Email Platform by Xyberclan",
-  description: "Xmailo is a modern email management platform built by Xyberclan. Smart compose, scheduling, tracking, and AI-powered replies — all in your browser.",
+  title: "Xyberclan — Smart Email Platform by Xyberclan",
+  description: "Xyberclan is a modern email management platform built by Xyberclan. Smart compose, scheduling, tracking, and AI-powered replies — all in your browser.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Xmailo",
+    title: "Xyberclan",
   },
   icons: {
     icon: "/icons/icon.svg",

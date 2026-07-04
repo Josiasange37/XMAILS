@@ -252,7 +252,7 @@ export default function DashboardPage() {
                   {[
                     { label: "Email Service", status: "Operational" },
                     { label: "API", status: "All systems normal" },
-                    { label: "Domain", status: "xmailo.com verified" },
+                    { label: "Domain", status: "xyberclan.dev verified" },
                   ].map((s) => (
                     <div key={s.label} className="flex items-center gap-2.5">
                       <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)] shrink-0" />

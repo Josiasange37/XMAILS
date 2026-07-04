@@ -130,7 +130,7 @@ export default function PromotionsPage() {
           subject: editSubject,
           html: editHtml,
           text: editText,
-          from: "Xmailo <noreply@xmailo.com>",
+          from: "Xyberclan <noreply@xyberclan.dev>",
           to: recipients,
         }),
       });

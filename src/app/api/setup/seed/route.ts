@@ -13,14 +13,14 @@ export async function POST() {
     const sample = [
       {
         from_email: "john.doe@example.com",
-        to_email: "contact@xmailo.com",
+        to_email: "contact@xyberclan.dev",
         subject: "Partnership Inquiry",
-        html: "<h1>Hello</h1><p>I would like to discuss a partnership with XMAILO.</p>",
-        text: "Hello, I would like to discuss a partnership with XMAILO.",
+        html: "<h1>Hello</h1><p>I would like to discuss a partnership with XYBERCLAN.</p>",
+        text: "Hello, I would like to discuss a partnership with XYBERCLAN.",
       },
       {
         from_email: "sarah@acme.com",
-        to_email: "hello@xmailo.com",
+        to_email: "hello@xyberclan.dev",
         subject: "Speaker Confirmation",
         html: "<h1>Confirmed</h1><p>I confirm my participation as a speaker at your upcoming event.</p>",
         text: "I confirm my participation as a speaker at your upcoming event.",

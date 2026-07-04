@@ -279,7 +279,7 @@ export default function InboxPage() {
                   </p>
                   {!search && (
                     <p className="text-xs text-muted-foreground/50 mt-1">
-                      Configure MX records for xmailo.com to receive emails
+                      Configure MX records for xyberclan.dev to receive emails
                     </p>
                   )}
                 </div>

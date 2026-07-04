@@ -95,12 +95,15 @@ export async function POST(request: NextRequest) {
         .select()
         .single();
       return NextResponse.json(updated || email, { status: 201 });
-    } catch {
+    } catch (err: any) {
       await db
         .from("emails")
         .update({ status: "failed" })
         .eq("id", email.id);
-      return NextResponse.json(email, { status: 201 });
+      return NextResponse.json(
+        { error: err?.message || "Failed to send via provider" },
+        { status: 502 }
+      );
     }
   } catch (error) {
     return NextResponse.json(

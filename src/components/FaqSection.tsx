@@ -11,24 +11,24 @@ const ACCENT = '#22d3ee';
 
 const faqs = [
   {
-    q: "What is Xmailo and how is it different?",
-    a: "Xmailo is a modern email platform built by Xyberclan that combines smart compose, send scheduling, read receipts, and AI-assisted replies in a fast, browser-based interface. Unlike traditional email clients, Xmailo is designed for productivity — no downloads, no bloat, just your inbox working smarter.",
+    q: "What is Xyberclan and how is it different?",
+    a: "Xyberclan is a modern email platform built by Xyberclan that combines smart compose, send scheduling, read receipts, and AI-assisted replies in a fast, browser-based interface. Unlike traditional email clients, Xyberclan is designed for productivity — no downloads, no bloat, just your inbox working smarter.",
   },
   {
     q: "Can I bring my own sending domain?",
     a: "Yes. You can verify any domain and start sending from it in under 5 minutes. We walk you through the DNS setup and validate DKIM, SPF, and DMARC records automatically.",
   },
   {
-    q: "Is Xmailo really free to start?",
+    q: "Is Xyberclan really free to start?",
     a: "Absolutely. The Free plan includes smart inbox, basic scheduling, and email tracking — no credit card required. Upgrade to Pro or Team when you need higher volumes, AI compose, and premium features.",
   },
   {
     q: "How does AI compose work?",
-    a: "Xmailo AI learns your writing style and suggests complete replies with a single click. It handles context-aware draft generation, tone adjustments, and multi-language support — so you respond in seconds, not minutes.",
+    a: "Xyberclan AI learns your writing style and suggests complete replies with a single click. It handles context-aware draft generation, tone adjustments, and multi-language support — so you respond in seconds, not minutes.",
   },
   {
     q: "Is my data secure and private?",
-    a: "Yes. Xmailo uses end-to-end encryption with AES-256 and TLS 1.3 protocols. We never sell your data, and all email content is encrypted both in transit and at rest. Xmailo is built by Xyberclan with security as a core principle.",
+    a: "Yes. Xyberclan uses end-to-end encryption with AES-256 and TLS 1.3 protocols. We never sell your data, and all email content is encrypted both in transit and at rest. Xyberclan is built by Xyberclan with security as a core principle.",
   },
 ];
 

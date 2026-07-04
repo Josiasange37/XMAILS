@@ -35,7 +35,7 @@ export default function LicensedSection() {
     <section ref={sectionRef} id="licensed" className="relative w-full bg-black pt-32 pb-10 px-6 overflow-hidden flex flex-col items-center">
       <div className="licensed-content text-center max-w-2xl mx-auto flex flex-col items-center z-10 relative">
         <h2 className="text-white font-medium text-[1.3rem] md:text-[1.5rem] leading-snug mb-5">
-          Xmailo is a certified<br/>and compliant email platform
+          Xyberclan is a certified<br/>and compliant email platform
         </h2>
         
         {/* Fake Logos / Badges */}

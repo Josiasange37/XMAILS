@@ -9,13 +9,13 @@ gsap.registerPlugin(ScrollTrigger);
 
 const testimonials = [
   {
-    quote: "Xmailo completely changed how I handle email. The AI compose feature alone saves me hours every week.",
+    quote: "Xyberclan completely changed how I handle email. The AI compose feature alone saves me hours every week.",
     author: "Sarah Chen",
     role: "Founder, Meridian Studio",
     accent: '#a78bfa',
   },
   {
-    quote: "We migrated our entire team to Xmailo and never looked back. The scheduling and tracking are game-changers.",
+    quote: "We migrated our entire team to Xyberclan and never looked back. The scheduling and tracking are game-changers.",
     author: "Marcus Johnson",
     role: "CTO, Cloudbase Inc.",
     accent: '#22d3ee',
@@ -135,7 +135,7 @@ export default function TestimonialSection() {
         >
           <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#a78bfa' }} />
           <span className="text-sm" style={{ color: 'var(--testi-join-text)' }}>
-            Join thousands using Xmailo —{" "}
+            Join thousands using Xyberclan —{" "}
             <a href="/dashboard" className="font-semibold hover:underline" style={{ color: '#a78bfa' }}>
               start for free
             </a>

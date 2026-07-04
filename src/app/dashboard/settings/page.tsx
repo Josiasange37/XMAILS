@@ -20,7 +20,7 @@ export default function SettingsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFilename, setLogoFilename] = useState("");
   const [savingLogo, setSavingLogo] = useState(false);
-  const [companyName, setCompanyName] = useState("Xmailo");
+  const [companyName, setCompanyName] = useState("Xyberclan");
   const [tagline, setTagline] = useState("Email Management Platform");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
