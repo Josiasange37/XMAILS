@@ -170,7 +170,8 @@ export default function SentPage() {
     setSending(true);
     try {
       const toEmails = selectedContacts.map((c: any) => c.email);
-      const res = await fetch("/api/emails", {
+      const endpoint = selectedContacts.length > 1 ? "/api/emails/broadcast" : "/api/emails";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -181,14 +182,15 @@ export default function SentPage() {
           text: editText,
         }),
       });
-      if (!res.ok) throw new Error("Failed to send");
-      addToast({ title: `Email sent to ${selectedContacts.length} recipient(s)`, variant: "success" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send");
+      addToast({ title: `Sent to ${data.sent || 1} recipient(s)` + (data.failed ? `, ${data.failed} failed` : ""), variant: "success" });
       setResult(null);
       setPrompt("");
       setFiles([]);
       setSelectedContacts([]);
-    } catch {
-      addToast({ title: "Failed to send", variant: "destructive" });
+    } catch (err: any) {
+      addToast({ title: "Failed to send", description: err.message, variant: "destructive" });
     } finally {
       setSending(false);
     }
