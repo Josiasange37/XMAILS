@@ -119,7 +119,7 @@ export default function BroadcastSentPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            from: "Xmailo <noreply@xmailo.com>",
+            from: "Xyberclan <noreply@xyberclan.dev>",
             to: [contact.email],
             subject: editSubject,
             html: editHtml,
