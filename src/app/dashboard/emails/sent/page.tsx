@@ -165,35 +165,41 @@ export default function SentPage() {
     }
   };
 
-  const sendEmail = async () => {
+  const sendEmail = async (): Promise<void> => {
     if (!result || selectedContacts.length === 0) return;
     setSending(true);
-    try {
-      const toEmails = selectedContacts.map((c: any) => c.email);
-      const endpoint = selectedContacts.length > 1 ? "/api/emails/broadcast" : "/api/emails";
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: "Xmailo <noreply@xmailo.com>",
-          to: toEmails,
-          subject: editSubject,
-          html: editHtml,
-          text: editText,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send");
-      addToast({ title: `Sent to ${data.sent || 1} recipient(s)` + (data.failed ? `, ${data.failed} failed` : ""), variant: "success" });
+    let sentCount = 0;
+    let failCount = 0;
+    for (const contact of selectedContacts) {
+      try {
+        const res = await fetch("/api/emails", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: "Xmailo <noreply@xmailo.com>",
+            to: [contact.email],
+            subject: editSubject,
+            html: editHtml,
+            text: editText,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok) sentCount++;
+        else failCount++;
+      } catch {
+        failCount++;
+      }
+    }
+    if (sentCount > 0) {
+      addToast({ title: `Sent to ${sentCount} recipient(s)` + (failCount > 0 ? `, ${failCount} failed` : ""), variant: "success" });
       setResult(null);
       setPrompt("");
       setFiles([]);
       setSelectedContacts([]);
-    } catch (err: any) {
-      addToast({ title: "Failed to send", description: err.message, variant: "destructive" });
-    } finally {
-      setSending(false);
+    } else {
+      addToast({ title: "Failed to send", description: "All sends failed", variant: "destructive" });
     }
+    setSending(false);
   };
 
   const formatSize = (bytes: number) => {
