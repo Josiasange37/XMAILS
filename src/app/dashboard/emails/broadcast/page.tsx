@@ -4,30 +4,16 @@ import { useState, useRef, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import ContactSelect from "@/components/contact-select";
 import {
   Sparkles, Send, Loader2, Upload, X, FileText, Trash2, History,
   ChevronDown, ChevronRight, Monitor, Smartphone, Copy, RotateCcw,
-  Image as FileImage, File, Plus, Search, ArrowLeft
+  Image as FileImage, File, Plus, Search, ArrowLeft, Users
 } from "lucide-react";
 import Link from "next/link";
 
-const PROMPT_HISTORY_KEY = "sent_prompt_history";
-
-interface PromptEntry {
-  id: string;
-  prompt: string;
-  subject: string;
-  html: string;
-  text: string;
-  recipientName: string;
-  recipientEmail: string;
-  timestamp: number;
-}
-
-export default function SentPage() {
+export default function BroadcastSentPage() {
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,10 +30,6 @@ export default function SentPage() {
   const [showFiles, setShowFiles] = useState(false);
   const [previewTab, setPreviewTab] = useState<"preview" | "html" | "text">("preview");
 
-  const [showHistory, setShowHistory] = useState(false);
-  const [historySearch, setHistorySearch] = useState("");
-  const [promptHistory, setPromptHistory] = useState<PromptEntry[]>([]);
-
   useEffect(() => {
     if (result) {
       setEditSubject(result.subject);
@@ -55,34 +37,6 @@ export default function SentPage() {
       setEditText(result.text);
     }
   }, [result]);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(PROMPT_HISTORY_KEY);
-      if (stored) setPromptHistory(JSON.parse(stored).slice(0, 50));
-    } catch {}
-  }, []);
-
-  const saveToHistory = (entry: PromptEntry) => {
-    const updated = [entry, ...promptHistory].slice(0, 50);
-    setPromptHistory(updated);
-    try { localStorage.setItem(PROMPT_HISTORY_KEY, JSON.stringify(updated)); } catch {}
-  };
-
-  const deleteHistoryEntry = (id: string) => {
-    const updated = promptHistory.filter((e) => e.id !== id);
-    setPromptHistory(updated);
-    try { localStorage.setItem(PROMPT_HISTORY_KEY, JSON.stringify(updated)); } catch {}
-  };
-
-  const usePromptFromHistory = (entry: PromptEntry) => {
-    setPrompt(entry.prompt);
-    setResult({ subject: entry.subject, html: entry.html, text: entry.text });
-    setEditSubject(entry.subject);
-    setEditHtml(entry.html);
-    setEditText(entry.text);
-    setShowHistory(false);
-  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const uploaded = e.target.files;
@@ -116,10 +70,9 @@ export default function SentPage() {
     setResult(null);
     const c = selectedContacts[0];
     const sampleName = c ? [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email : "a contact";
-    const isMulti = selectedContacts.length > 1;
-    const sampleContext = isMulti
+    const sampleContext = c
       ? `This email will be sent to ${selectedContacts.length} contacts. Use "${sampleName}" as a sample recipient and {{first_name}} as a placeholder for personalization.\n\n`
-      : `Write an email to ${sampleName}${c.company ? ` at ${c.company}` : ""} (${c.email}).\n\n`;
+      : "";
     const fullPrompt = sampleContext + prompt.trim();
     try {
       const controller = new AbortController();
@@ -130,7 +83,7 @@ export default function SentPage() {
         body: JSON.stringify({
           prompt: fullPrompt,
           files: files.length > 0 ? files : undefined,
-          contact: isMulti ? null : c,
+          contact: selectedContacts.length === 1 ? selectedContacts[0] : null,
         }),
         signal: controller.signal,
       });
@@ -144,16 +97,6 @@ export default function SentPage() {
       }
       if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
       setResult(data);
-      saveToHistory({
-        id: crypto.randomUUID?.() || Date.now().toString(),
-        prompt: prompt.trim(),
-        subject: data.subject,
-        html: data.html,
-        text: data.text,
-        recipientName: isMulti ? `${selectedContacts.length} contacts` : sampleName,
-        recipientEmail: isMulti ? selectedContacts.map((x: any) => x.email).join(", ") : c.email,
-        timestamp: Date.now(),
-      });
     } catch (err: any) {
       if (err.name === "AbortError") {
         addToast({ title: "Request timed out", description: "AI generation took too long. Try again.", variant: "destructive" });
@@ -206,23 +149,6 @@ export default function SentPage() {
     return <File className="h-4 w-4 text-gray-500" />;
   };
 
-  const formatDate = (ts: number) => {
-    const d = new Date(ts);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    if (diff < 60000) return "Just now";
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    return d.toLocaleDateString();
-  };
-
-  const filteredHistory = promptHistory.filter(
-    (e) =>
-      e.prompt.toLowerCase().includes(historySearch.toLowerCase()) ||
-      e.subject.toLowerCase().includes(historySearch.toLowerCase()) ||
-      e.recipientName.toLowerCase().includes(historySearch.toLowerCase())
-  );
-
   return (
     <PageTransition>
     <div className="space-y-5">
@@ -232,47 +158,17 @@ export default function SentPage() {
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl"><ArrowLeft className="h-4 w-4" /></Button>
           </Link>
           <div>
-            <h1 className="text-[28px] font-bold tracking-tight">AI Composer</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Describe the email, AI generates it</p>
+            <h1 className="text-[28px] font-bold tracking-tight">Broadcast Send</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Send the same email to multiple contacts at once</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" className={cn("h-9 rounded-xl", showHistory && "bg-primary/10")} onClick={() => setShowHistory(!showHistory)}>
-          <History className="h-4 w-4 mr-1.5" />History{promptHistory.length > 0 && <span className="ml-1.5 text-xs text-muted-foreground">({promptHistory.length})</span>}
-        </Button>
+        {selectedContacts.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-sm font-medium">
+            <Users className="h-4 w-4" />
+            {selectedContacts.length} selected
+          </div>
+        )}
       </div>
-
-      {showHistory && (
-        <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm overflow-hidden">
-          <div className="p-4">
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
-              <Input placeholder="Search prompts, subjects, recipients..." value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="rounded-xl h-9 pl-9" />
-            </div>
-            {filteredHistory.length === 0 ? (
-              <p className="text-center py-6 text-sm text-muted-foreground">{historySearch ? "No matching prompts" : "No prompt history yet"}</p>
-            ) : (
-              <div className="space-y-1 max-h-80 overflow-y-auto">
-                {filteredHistory.map((entry) => (
-                  <div key={entry.id} className="flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/40 transition-colors group">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{formatDate(entry.timestamp)}</span><span>→</span><span className="truncate">{entry.recipientName}</span>
-                      </div>
-                      <p className="text-sm font-medium truncate mt-0.5">{entry.subject}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{entry.prompt}</p>
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <button onClick={() => { navigator.clipboard.writeText(entry.prompt); addToast({ title: "Prompt copied", variant: "success" }); }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><Copy className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => usePromptFromHistory(entry)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><RotateCcw className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => deleteHistoryEntry(entry.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
         <div className="xl:col-span-2 space-y-5">
@@ -281,12 +177,18 @@ export default function SentPage() {
               <label className="text-xs font-medium text-muted-foreground">Recipients</label>
               <ContactSelect multiple selected={selectedContacts} onChange={setSelectedContacts} placeholder="Search and select contacts..." />
               {selectedContacts.length > 0 && (
-                <p className="text-xs text-muted-foreground">{selectedContacts.length} contact(s) selected</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {selectedContacts.map((c: any) => (
+                    <span key={c.id} className="text-[11px] px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground">
+                      {c.first_name || c.last_name ? `${c.first_name || ""} ${c.last_name || ""}`.trim() : c.email}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">What should this email say?</label>
-              <Textarea placeholder="Describe the email content. AI will personalize it for the recipient." rows={5} value={prompt} onChange={(e) => setPrompt(e.target.value)} className="rounded-xl" />
+              <Textarea placeholder="Describe the email content. AI will generate it for all recipients." rows={5} value={prompt} onChange={(e) => setPrompt(e.target.value)} className="rounded-xl" />
             </div>
             <div>
               <button onClick={() => setShowFiles(!showFiles)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -327,7 +229,7 @@ export default function SentPage() {
               <div className="text-center py-16 px-5">
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted/60 mb-4"><Sparkles className="h-7 w-7 text-muted-foreground/40" /></div>
                 <p className="text-sm text-muted-foreground">{generating ? "Generating your email..." : "Your email preview will appear here"}</p>
-                <p className="text-xs text-muted-foreground mt-1">{generating ? "This may take up to a minute" : "Describe your email and click Generate"}</p>
+                <p className="text-xs text-muted-foreground mt-1">{generating ? "This may take up to a minute" : "Select contacts, describe your email, and click Generate"}</p>
               </div>
             ) : (
               <div className="p-5 space-y-4">
@@ -365,9 +267,9 @@ export default function SentPage() {
                   )}
                 </div>
                 <div className="flex gap-2">
-            <Button onClick={sendEmail} disabled={sending || selectedContacts.length === 0} className="flex-1 rounded-xl shadow-sm">
-              {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Sending to {selectedContacts.length} contact(s)...</> : <><Send className="h-4 w-4 mr-1.5" />Send to {selectedContacts.length} contact(s)</>}
-            </Button>
+                  <Button onClick={sendEmail} disabled={sending || selectedContacts.length === 0} className="flex-1 rounded-xl shadow-sm">
+                    {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Sending to {selectedContacts.length} contact(s)...</> : <><Send className="h-4 w-4 mr-1.5" />Send to {selectedContacts.length} contact(s)</>}
+                  </Button>
                   <Button variant="ghost" onClick={() => setResult(null)} disabled={sending} className="rounded-xl"><Trash2 className="h-4 w-4 mr-1.5" />Discard</Button>
                 </div>
               </div>
