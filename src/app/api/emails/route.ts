@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { sendEmail } from "@/lib/resend";
+import { injectBranding } from "@/lib/email-brand";
 
 export async function GET(request: NextRequest) {
   try {
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { from, to, subject, html, text } = body;
+    let { from, to, subject, html, text } = body;
 
     if (!from || !to || !subject) {
       return NextResponse.json(
@@ -68,6 +69,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    html = await injectBranding(html);
 
     const { data: email, error: insertError } = await db
       .from("emails")

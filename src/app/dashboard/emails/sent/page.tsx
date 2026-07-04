@@ -167,11 +167,12 @@ export default function SentPage() {
     try {
       const contact = selectedContacts[0];
       const toEmail = contact.email;
-      const res = await fetch("/api/send-test", {
+      const res = await fetch("/api/emails", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: toEmail,
+          from: "Josias <hello@xyberclan.dev>",
+          to: [toEmail],
           subject: editSubject,
           html: editHtml,
           text: editText,
