@@ -136,7 +136,7 @@ export default function BroadcastsPage() {
           subject: editSubject,
           html: editHtml,
           text: editText,
-          from: "Xyberclan <noreply@xyberclan.dev>",
+          from: "Xyberclan <hello@xyberclan.dev>",
           sendNow: true,
           customRecipients: recipients,
         }),

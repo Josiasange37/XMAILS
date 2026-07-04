@@ -25,7 +25,7 @@ function ComposeForm() {
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
 
   const [form, setForm] = useState({
-    from: "Xyberclan <noreply@xyberclan.dev>",
+    from: "Xyberclan <hello@xyberclan.dev>",
     to: "",
     subject: "",
     html: "",
