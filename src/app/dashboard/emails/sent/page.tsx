@@ -165,6 +165,13 @@ export default function SentPage() {
     }
   };
 
+  const personalize = (text: string, contact: any) =>
+    (text || "")
+      .replace(/\{\{first_name\}\}/g, contact.first_name || "there")
+      .replace(/\{\{last_name\}\}/g, contact.last_name || "")
+      .replace(/\{\{company\}\}/g, contact.company || "")
+      .replace(/\{\{email\}\}/g, contact.email);
+
   const sendEmail = async (): Promise<void> => {
     if (!result || selectedContacts.length === 0) return;
     setSending(true);
@@ -179,9 +186,9 @@ export default function SentPage() {
           body: JSON.stringify({
             from: "Xyberclan <noreply@xyberclan.dev>",
             to: [contact.email],
-            subject: editSubject,
-            html: editHtml,
-            text: editText,
+            subject: personalize(editSubject, contact),
+            html: personalize(editHtml, contact),
+            text: personalize(editText, contact),
           }),
         });
         const data = await res.json();
