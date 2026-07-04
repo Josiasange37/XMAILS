@@ -27,7 +27,6 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
   { name: "Inbox", href: "/dashboard/emails/inbox", icon: Inbox },
   { name: "Sent", href: "/dashboard/emails/sent", icon: Send },
-  { name: "Broadcast", href: "/dashboard/emails/broadcast", icon: Send },
   { name: "Scheduled", href: "/dashboard/emails/scheduled", icon: Clock },
   { name: "Contacts", href: "/dashboard/contacts", icon: Users },
   { name: "Broadcasts", href: "/dashboard/broadcasts", icon: Megaphone },

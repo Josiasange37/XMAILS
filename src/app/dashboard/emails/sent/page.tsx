@@ -109,18 +109,14 @@ export default function SentPage() {
   const generateEmail = async () => {
     if (!prompt.trim()) return;
     if (selectedContacts.length === 0) {
-      addToast({ title: "Select at least one contact", variant: "destructive" });
+      addToast({ title: "Select a contact first", variant: "destructive" });
       return;
     }
     setGenerating(true);
     setResult(null);
     const c = selectedContacts[0];
-    const sampleName = c ? [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email : "a contact";
-    const isMulti = selectedContacts.length > 1;
-    const sampleContext = isMulti
-      ? `This email will be sent to ${selectedContacts.length} contacts. Use "${sampleName}" as a sample recipient and {{first_name}} as a placeholder for personalization.\n\n`
-      : `Write an email to ${sampleName}${c.company ? ` at ${c.company}` : ""} (${c.email}).\n\n`;
-    const fullPrompt = sampleContext + prompt.trim();
+    const recipientName = [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email;
+    const fullPrompt = `Write an email to ${recipientName}${c.company ? ` at ${c.company}` : ""} (${c.email}).\n\n${prompt.trim()}`;
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 90000);
@@ -130,7 +126,7 @@ export default function SentPage() {
         body: JSON.stringify({
           prompt: fullPrompt,
           files: files.length > 0 ? files : undefined,
-          contact: isMulti ? null : c,
+          contact: c,
         }),
         signal: controller.signal,
       });
@@ -150,8 +146,8 @@ export default function SentPage() {
         subject: data.subject,
         html: data.html,
         text: data.text,
-        recipientName: isMulti ? `${selectedContacts.length} contacts` : sampleName,
-        recipientEmail: isMulti ? selectedContacts.map((x: any) => x.email).join(", ") : c.email,
+        recipientName,
+        recipientEmail: c.email,
         timestamp: Date.now(),
       });
     } catch (err: any) {
@@ -165,53 +161,35 @@ export default function SentPage() {
     }
   };
 
-  const personalize = (text: string, contact: any) =>
-    (text || "")
-      .replace(/\{\{first_name\}\}/g, contact.first_name || "there")
-      .replace(/\{\{last_name\}\}/g, contact.last_name || "")
-      .replace(/\{\{company\}\}/g, contact.company || "")
-      .replace(/\{\{email\}\}/g, contact.email);
-
-  const sendEmail = async (): Promise<void> => {
+  const sendEmail = async () => {
     if (!result || selectedContacts.length === 0) return;
     setSending(true);
-    let sentCount = 0;
-    let failCount = 0;
-    let lastError = "";
-    for (const contact of selectedContacts) {
-      try {
-        const res = await fetch("/api/emails", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            from: "Xyberclan <noreply@xyberclan.dev>",
-            to: [contact.email],
-            subject: personalize(editSubject, contact),
-            html: personalize(editHtml, contact),
-            text: personalize(editText, contact),
-          }),
-        });
-        const data = await res.json();
-        if (res.ok) sentCount++;
-        else {
-          failCount++;
-          lastError = data?.error || res.statusText;
-        }
-      } catch (err: any) {
-        failCount++;
-        lastError = err?.message || "Network error";
-      }
-    }
-    if (sentCount > 0) {
-      addToast({ title: `Sent to ${sentCount} recipient(s)` + (failCount > 0 ? `, ${failCount} failed` : ""), variant: "success" });
+    try {
+      const contact = selectedContacts[0];
+      const toEmail = contact.email;
+      const res = await fetch("/api/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Xyberclan <noreply@xyberclan.dev>",
+          to: [toEmail],
+          subject: editSubject,
+          html: editHtml,
+          text: editText,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send");
+      addToast({ title: "Email sent to " + toEmail, variant: "success" });
       setResult(null);
       setPrompt("");
       setFiles([]);
       setSelectedContacts([]);
-    } else {
-      addToast({ title: "Failed to send", description: lastError || "All sends failed", variant: "destructive" });
+    } catch (err: any) {
+      addToast({ title: "Failed to send", description: err.message, variant: "destructive" });
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   const formatSize = (bytes: number) => {
@@ -298,10 +276,10 @@ export default function SentPage() {
         <div className="xl:col-span-2 space-y-5">
           <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm p-5 space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Recipients</label>
-              <ContactSelect multiple selected={selectedContacts} onChange={setSelectedContacts} placeholder="Search and select contacts..." />
+              <label className="text-xs font-medium text-muted-foreground">Recipient</label>
+              <ContactSelect selected={selectedContacts} onChange={setSelectedContacts} placeholder="Search and select a contact..." />
               {selectedContacts.length > 0 && (
-                <p className="text-xs text-muted-foreground">{selectedContacts.length} contact(s) selected</p>
+                <p className="text-xs text-muted-foreground">To: <span className="font-medium text-foreground">{[selectedContacts[0].first_name, selectedContacts[0].last_name].filter(Boolean).join(" ") || selectedContacts[0].email}</span> — {selectedContacts[0].email}</p>
               )}
             </div>
             <div className="space-y-1.5">
@@ -386,7 +364,7 @@ export default function SentPage() {
                 </div>
                 <div className="flex gap-2">
             <Button onClick={sendEmail} disabled={sending || selectedContacts.length === 0} className="flex-1 rounded-xl shadow-sm">
-              {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Sending to {selectedContacts.length} contact(s)...</> : <><Send className="h-4 w-4 mr-1.5" />Send to {selectedContacts.length} contact(s)</>}
+              {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Sending...</> : <><Send className="h-4 w-4 mr-1.5" />Send to {selectedContacts[0]?.email}</>}
             </Button>
                   <Button variant="ghost" onClick={() => setResult(null)} disabled={sending} className="rounded-xl"><Trash2 className="h-4 w-4 mr-1.5" />Discard</Button>
                 </div>
