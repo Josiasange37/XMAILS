@@ -91,7 +91,12 @@ export function injectLogoIntoHtml(html: string, logoUrl: string | null, company
     return html.replace(bodyTag, bodyTag + "\n" + header);
   }
 
-  return html.replace(/<html>/i, "<html>\n" + header);
+  const htmlMatch = html.match(/<html[^>]*>/i);
+  if (htmlMatch) {
+    return html.replace(htmlMatch[0], htmlMatch[0] + "\n" + header);
+  }
+
+  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:24px;color:#374151;">${header}${html}</div>`;
 }
 
 export async function injectBranding(html?: string): Promise<string> {
