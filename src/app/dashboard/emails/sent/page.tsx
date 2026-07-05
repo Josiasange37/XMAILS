@@ -10,7 +10,7 @@ import ContactSelect from "@/components/contact-select";
 import {
   Sparkles, Send, Loader2, Upload, X, FileText, Trash2, History,
   ChevronDown, ChevronRight, Monitor, Smartphone, Copy, RotateCcw,
-  Image as FileImage, File, Plus, Search, ArrowLeft
+  Image as FileImage, File, Plus, Search, ArrowLeft, Brain
 } from "lucide-react";
 import Link from "next/link";
 
@@ -43,6 +43,18 @@ export default function SentPage() {
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [showFiles, setShowFiles] = useState(false);
   const [previewTab, setPreviewTab] = useState<"preview" | "html" | "text">("preview");
+
+  const [models, setModels] = useState<{ id: string; label: string; provider: string; group: string }[]>([]);
+  const [selectedModel, setSelectedModel] = useState("");
+
+  useEffect(() => {
+    fetch("/api/ai/models").then((r) => r.json()).then((d) => {
+      if (d.models?.length) {
+        setModels(d.models);
+        if (!selectedModel) setSelectedModel(d.models[0].provider);
+      }
+    }).catch(() => {});
+  }, []);
 
   const [showHistory, setShowHistory] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
@@ -127,6 +139,7 @@ export default function SentPage() {
           prompt: fullPrompt,
           files: files.length > 0 ? files : undefined,
           contact: c,
+          model: selectedModel,
         }),
         signal: controller.signal,
       });
@@ -287,6 +300,24 @@ export default function SentPage() {
               {selectedContacts.length > 0 && (
                 <p className="text-xs text-muted-foreground">To: <span className="font-medium text-foreground">{[selectedContacts[0].first_name, selectedContacts[0].last_name].filter(Boolean).join(" ") || selectedContacts[0].email}</span> — {selectedContacts[0].email}</p>
               )}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">AI Model</label>
+              <div className="flex items-center gap-2">
+                <Brain className="h-4 w-4 text-muted-foreground shrink-0" />
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="flex h-9 w-full rounded-xl border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {models.length === 0 && <option value="">Loading models...</option>}
+                  {models.map((m) => (
+                    <option key={m.provider} value={m.provider}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">What should this email say?</label>

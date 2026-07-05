@@ -159,9 +159,11 @@ async function fetchCompletion(
 
 export async function callAI({
   messages,
+  providerName,
   signal: outerSignal,
 }: {
   messages: { role: string; content: string | any[] }[];
+  providerName?: string;
   signal?: AbortSignal;
 }) {
   const lastError: string[] = [];
@@ -172,8 +174,12 @@ export async function callAI({
     ? combineAbortSignals(outerSignal, overallController.signal)
     : overallController.signal;
 
+  const providers = providerName
+    ? [PROVIDERS.find((p) => p.name === providerName)].filter(Boolean) as typeof PROVIDERS
+    : PROVIDERS;
+
   try {
-    for (const provider of PROVIDERS) {
+    for (const provider of providers) {
       const apiKey = provider.apiKey();
       if (!apiKey) {
         lastError.push(`${provider.name}: API key not configured`);
@@ -228,7 +234,9 @@ export async function callAI({
       }
     }
 
-    throw new Error(`All AI providers failed:\n${lastError.join("\n")}`);
+    throw new Error(providerName
+      ? `Selected provider "${providerName}" failed:\n${lastError.join("\n")}`
+      : `All AI providers failed:\n${lastError.join("\n")}`);
   } finally {
     clearTimeout(overallTimeout);
   }

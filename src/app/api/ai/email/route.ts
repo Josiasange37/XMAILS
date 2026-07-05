@@ -5,7 +5,7 @@ import { callAI } from "@/lib/ai";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt, files, contact } = body;
+    const { prompt, files, contact, model } = body;
 
     if (!prompt) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
@@ -31,15 +31,24 @@ Use these recipient details to PERSONALIZE the email. Address them by name in th
 ${contactInfo}
 
 Return valid JSON with:
-- subject: compelling subject line
-- html: email body HTML (content only — NO logo, NO header, NO company name banner — those are added automatically server-side)
+- subject: compelling subject line (under 60 chars, no ALL CAPS, no spammy words like "guarantee" or "limited time")
+- html: email body HTML (content only — NO logo, NO header, NO company name banner, NO footer — those are added automatically server-side)
 - text: plain text version
 
 Tone: professional, warm, on-brand for ${companyName}.
-Structure: start with a greeting, body paragraphs, call to action if appropriate, then sign-off.
-Style: clean inline CSS, responsive-friendly, max 600px width.
+Structure: start with a greeting, body paragraphs, clear single call to action if appropriate, then sign-off.
+Style: clean inline CSS, responsive-friendly, max 600px width. Use <Row> and <Column> pattern instead of flexbox/grid (poor email client support).
+Use standard HTML elements (tables for layout, not CSS grid/flexbox).
 
-Do NOT include any <img>, header banner, or logo — only the body content.`;
+Email best practices:
+- Single CTA per email (one button, one link to click)
+- Text-to-image ratio: at least 60% text
+- Include alt text on any images
+- Use plain UTF-8 links (no URL shorteners)
+- Preview text optimized for inbox display
+
+Do NOT include any <img>, header banner, logo, or footer — only the email body content.
+Do NOT ask for personal information you already have from the recipient details.`;
 
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
@@ -65,7 +74,7 @@ Do NOT include any <img>, header banner, or logo — only the body content.`;
 
     messages.push({ role: "user", content: userContent });
 
-    const result = await callAI({ messages });
+    const result = await callAI({ messages, providerName: model });
 
     return NextResponse.json(result);
   } catch (error: any) {
