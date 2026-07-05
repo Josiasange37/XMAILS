@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Megaphone, Sparkles, Send, Loader2, Upload, X, FileText, Trash2,
-  ChevronDown, Monitor, Smartphone, Copy, RotateCcw,
+  ChevronDown, ChevronRight, Monitor, Smartphone, Copy, RotateCcw,
   Image as FileImage, File, Brain, Users, History
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
