@@ -21,7 +21,7 @@ export default function SettingsPage() {
   const [logoFilename, setLogoFilename] = useState("");
   const [savingLogo, setSavingLogo] = useState(false);
   const [companyName, setCompanyName] = useState("Xyberclan");
-  const [tagline, setTagline] = useState("Email Management Platform");
+  const [tagline, setTagline] = useState("Innovate Protect Teach");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

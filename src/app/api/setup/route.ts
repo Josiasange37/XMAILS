@@ -21,7 +21,7 @@ INSERT INTO inbound_emails (from_email, to_email, subject, html, text) VALUES
 ('sarah@acme.com', 'hello@xyberclan.dev', 'Speaker Confirmation', '<h1>Confirmed</h1><p>I confirm my participation as a speaker.</p>', 'I confirm my participation as a speaker.')
 ON CONFLICT DO NOTHING;
 
-UPDATE settings SET value = '{"name":"Xyberclan","tagline":"Email Management Platform","logo_url":""}'::jsonb WHERE key = 'brand'
+UPDATE settings SET value = '{"name":"Xyberclan","tagline":"Innovate Protect Teach","logo_url":""}'::jsonb WHERE key = 'brand'
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;`;
 
 export async function GET() {
