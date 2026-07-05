@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { sendEmail } from "@/lib/resend";
 import { injectBranding } from "@/lib/email-brand";
 
 export async function GET(request: NextRequest) {
@@ -72,40 +71,37 @@ export async function POST(request: NextRequest) {
 
     html = await injectBranding(html);
 
-    const { data: email, error: insertError } = await db
-      .from("emails")
-      .insert({
-        from_email: from,
-        to_email: to,
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: Array.isArray(to) ? to : [to],
         subject,
         html,
         text,
-        status: "queued",
-      })
-      .select()
-      .single();
+      }),
+    });
 
-    if (insertError) throw insertError;
-
-    try {
-      const result = await sendEmail({ from, to: Array.isArray(to) ? to : [to], subject, html, text });
-      const { data: updated } = await db
-        .from("emails")
-        .update({ tracking_id: result?.id, status: "sent" })
-        .eq("id", email.id)
-        .select()
-        .single();
-      return NextResponse.json(updated || email, { status: 201 });
-    } catch (err: any) {
-      await db
-        .from("emails")
-        .update({ status: "failed" })
-        .eq("id", email.id);
-      return NextResponse.json(
-        { error: err?.message || "Failed to send via provider" },
-        { status: 502 }
-      );
+    const data = await res.json();
+    if (!res.ok) {
+      return NextResponse.json({ error: data.message || "Resend error" }, { status: 502 });
     }
+
+    db.from("emails").insert({
+      from_email: from,
+      to_email: to,
+      subject,
+      html,
+      text,
+      tracking_id: data.id,
+      status: "sent",
+    }).then().catch(() => {});
+
+    return NextResponse.json(data, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to send email" },
