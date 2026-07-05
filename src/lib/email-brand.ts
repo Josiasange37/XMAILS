@@ -63,21 +63,24 @@ export async function deleteLogoFromStorage(filename?: string) {
   }
 }
 
+const FALLBACK_LOGO_URL = "https://addklmtbybzgbyevvdqa.supabase.co/storage/v1/object/public/logos/logo.png";
+
 export function injectLogoIntoHtml(html: string, logoUrl: string | null, companyName?: string, tagline?: string): string {
   const name = companyName || "Xyberclan";
+  const url = logoUrl || FALLBACK_LOGO_URL;
 
-  const logoImg = logoUrl
-    ? `<img src="${logoUrl}" alt="${name}" style="width:28px;height:28px;border-radius:4px;vertical-align:middle;margin-right:8px;" />`
-    : `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:#374151;color:#fff;font-size:12px;font-weight:700;margin-right:8px;vertical-align:middle;">${name.charAt(0).toUpperCase()}</span>`;
+  const logoImg = url
+    ? `<img src="${url}" alt="${name}" style="width:36px;height:36px;border-radius:6px;vertical-align:middle;margin-right:10px;" />`
+    : `<span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;background:#374151;color:#fff;font-size:14px;font-weight:700;margin-right:10px;vertical-align:middle;">${name.charAt(0).toUpperCase()}</span>`;
 
   const taglineHtml = tagline
-    ? `<span style="color:#9ca3af;margin-left:4px;">&mdash; ${tagline}</span>`
+    ? `<span style="color:#9ca3af;margin-left:4px;font-size:14px;">&mdash; ${tagline}</span>`
     : "";
 
   const header = `
-    <div style="margin-bottom:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <div style="margin-bottom:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
       ${logoImg}
-      <span style="font-size:16px;font-weight:600;color:#374151;vertical-align:middle;">${name}</span>
+      <span style="font-size:18px;font-weight:600;color:#374151;vertical-align:middle;">${name}</span>
       ${taglineHtml}
     </div>
   `;
@@ -94,6 +97,17 @@ export function injectLogoIntoHtml(html: string, logoUrl: string | null, company
 export async function injectBranding(html?: string): Promise<string> {
   if (!html) return html || "";
 
-  const brand = await getBrandSettings();
-  return injectLogoIntoHtml(html, brand.logoSrc || brand.logoUrl || null, brand.companyName, brand.tagline);
+  let brand;
+  try {
+    brand = await getBrandSettings();
+  } catch {
+    brand = {};
+  }
+
+  return injectLogoIntoHtml(
+    html,
+    brand.logoSrc || brand.logoUrl || null,
+    brand.companyName,
+    brand.tagline
+  );
 }
