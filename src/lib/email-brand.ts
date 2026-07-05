@@ -68,25 +68,20 @@ export function injectLogoIntoHtml(html: string, logoUrl: string, companyName?: 
 
   const name = companyName || "Xyberclan";
 
-  const signature = `
-    <div style="margin-top:32px;padding-top:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#6b7280;">
-      <img src="${logoUrl}" alt="${name}" style="width:20px;height:20px;border-radius:4px;vertical-align:middle;margin-right:6px;" />
-      <span style="font-weight:600;color:#374151;">${name}</span>
-      ${tagline ? `<span style="color:#9ca3af;"> &mdash; ${tagline}</span>` : ""}
+  const header = `
+    <div style="margin-bottom:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+      <img src="${logoUrl}" alt="${name}" style="width:28px;height:28px;border-radius:4px;vertical-align:middle;margin-right:8px;" />
+      <span style="font-size:16px;font-weight:600;color:#374151;vertical-align:middle;">${name}</span>
     </div>
   `;
 
-  const bodyEndMatch = html.match(/<\/body>/i);
-  if (bodyEndMatch) {
-    return html.replace(/<\/body>/i, `${signature}\n</body>`);
+  const bodyMatch = html.match(/<body[^>]*>/i);
+  if (bodyMatch) {
+    const bodyTag = bodyMatch[0];
+    return html.replace(bodyTag, bodyTag + "\n" + header);
   }
 
-  const htmlEndMatch = html.match(/<\/html>/i);
-  if (htmlEndMatch) {
-    return html.replace(/<\/html>/i, `${signature}\n</html>`);
-  }
-
-  return `${html}${signature}`;
+  return html.replace(/<html>/i, "<html>\n" + header);
 }
 
 export async function injectBranding(html?: string): Promise<string> {
