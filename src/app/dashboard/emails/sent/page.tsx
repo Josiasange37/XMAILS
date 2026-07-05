@@ -171,7 +171,7 @@ export default function SentPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: "Josias <hello@xyberclan.dev>",
+          from: "Xyberclan <hello@xyberclan.dev>",
           to: [toEmail],
           subject: editSubject,
           html: editHtml,
