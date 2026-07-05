@@ -21,20 +21,23 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { logo, logoFilename, companyName, tagline } = body;
+    const { logo, logoFilename, companyName, tagline, logoSrc } = body;
 
     let value: Record<string, any> = { companyName: companyName || "Xyberclan", tagline: tagline || "" };
 
-    if (logo) {
-      const logoUrl = await uploadLogoToStorage(logo, logoFilename || "logo.png");
-      if (!logoUrl) {
-        return NextResponse.json(
-          { error: "Failed to upload logo to storage" },
-          { status: 500 }
-        );
-      }
-      value.logoUrl = logoUrl;
+    if (logoSrc) {
+      value.logoSrc = logoSrc;
       value.logoFilename = logoFilename || "logo.png";
+    } else if (logo) {
+      const logoUrl = await uploadLogoToStorage(logo, logoFilename || "logo.png");
+      if (logoUrl) {
+        value.logoUrl = logoUrl;
+        value.logoFilename = logoFilename || "logo.png";
+      } else {
+        const mime = logoFilename?.endsWith(".svg") ? "image/svg+xml" : logoFilename?.endsWith(".webp") ? "image/webp" : "image/png";
+        value.logoSrc = `data:${mime};base64,${logo}`;
+        value.logoFilename = logoFilename || "logo.png";
+      }
     } else {
       const { data: existing } = await db
         .from("settings")
@@ -45,6 +48,9 @@ export async function POST(request: NextRequest) {
       if (existing?.value?.logoUrl) {
         value.logoUrl = existing.value.logoUrl;
         value.logoFilename = existing.value.logoFilename;
+      } else if (existing?.value?.logoSrc) {
+        value.logoSrc = existing.value.logoSrc;
+        value.logoFilename = existing.value.logoFilename;
       }
     }
 
@@ -54,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     if (upsertError) throw upsertError;
 
-    return NextResponse.json({ success: true, logoUrl: value.logoUrl });
+    return NextResponse.json({ success: true, logoUrl: value.logoUrl || value.logoSrc });
   } catch (err: any) {
     return NextResponse.json(
       { error: "Failed to save logo", detail: err?.message || err?.details || String(err) },

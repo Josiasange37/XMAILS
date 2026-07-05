@@ -95,5 +95,5 @@ export async function injectBranding(html?: string): Promise<string> {
   if (!html) return html || "";
 
   const brand = await getBrandSettings();
-  return injectLogoIntoHtml(html, brand.logoUrl || null, brand.companyName, brand.tagline);
+  return injectLogoIntoHtml(html, brand.logoSrc || brand.logoUrl || null, brand.companyName, brand.tagline);
 }
