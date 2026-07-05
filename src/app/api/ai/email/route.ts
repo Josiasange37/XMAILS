@@ -74,7 +74,7 @@ Do NOT ask for personal information you already have from the recipient details.
 
     messages.push({ role: "user", content: userContent });
 
-    const result = await callAI({ messages, providerName: model });
+    const result = await callAI({ messages, modelId: model });
 
     return NextResponse.json(result);
   } catch (error: any) {

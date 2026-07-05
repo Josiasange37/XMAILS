@@ -51,7 +51,7 @@ export default function SentPage() {
     fetch("/api/ai/models").then((r) => r.json()).then((d) => {
       if (d.models?.length) {
         setModels(d.models);
-        if (!selectedModel) setSelectedModel(d.models[0].provider);
+        if (!selectedModel) setSelectedModel(d.models[0].id);
       }
     }).catch(() => {});
   }, []);
@@ -312,7 +312,7 @@ export default function SentPage() {
                 >
                   {models.length === 0 && <option value="">Loading models...</option>}
                   {models.map((m) => (
-                    <option key={m.provider} value={m.provider}>
+                    <option key={m.id} value={m.id}>
                       {m.label}
                     </option>
                   ))}

@@ -28,7 +28,7 @@ const PROVIDERS = [
     name: "bigmodel",
     endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
     apiKey: () => process.env.BIGMODEL_API_KEY,
-    model: "glm-4-plus",
+    model: "glm-5",
   },
 ];
 
@@ -157,13 +157,31 @@ async function fetchCompletion(
   throw new Error("max retries exceeded");
 }
 
+const modelProviderMap: Record<string, string> = {
+  "openai/gpt-oss-120b:free": "openrouter1",
+  "qwen/qwen3-next-80b-a3b-instruct:free": "openrouter1",
+  "meta-llama/llama-3.3-70b-instruct:free": "openrouter1",
+  "nousresearch/hermes-3-llama-3.1-405b:free": "openrouter1",
+  "google/gemma-4-26b-a4b-it:free": "openrouter1",
+  "nvidia/nemotron-3-super-120b-a12b:free": "openrouter1",
+  "openai/gpt-oss-20b:free": "openrouter1",
+  "openrouter/free": "openrouter1",
+  "qwen/qwen-2.5-72b-instruct:free": "openrouter2",
+  "qwen-3-32b": "groq",
+  "llama-3.3-70b-versatile": "groq",
+  "llama-4-scout-17b-16e-instruct": "groq",
+  "openai/gpt-oss-120b": "groq",
+  "glm-5": "bigmodel",
+  "glm-4-flash": "bigmodel",
+};
+
 export async function callAI({
   messages,
-  providerName,
+  modelId,
   signal: outerSignal,
 }: {
   messages: { role: string; content: string | any[] }[];
-  providerName?: string;
+  modelId?: string;
   signal?: AbortSignal;
 }) {
   const lastError: string[] = [];
@@ -174,6 +192,7 @@ export async function callAI({
     ? combineAbortSignals(outerSignal, overallController.signal)
     : overallController.signal;
 
+  const providerName = modelId ? modelProviderMap[modelId] : undefined;
   const providers = providerName
     ? [PROVIDERS.find((p) => p.name === providerName)].filter(Boolean) as typeof PROVIDERS
     : PROVIDERS;
@@ -200,10 +219,12 @@ export async function callAI({
           ? openRouterHeaders(apiKey)
           : groqHeaders(apiKey);
 
+        const actualModel = modelId || provider.model;
+
         const raw = await fetchCompletion(
           provider.endpoint,
           headers,
-          provider.model,
+          actualModel,
           msgs,
           maxTokens,
           overallSignal,
@@ -223,6 +244,7 @@ export async function callAI({
           html: (parsed.html || "").toString(),
           text: (parsed.text || "").toString(),
           provider: provider.name,
+          model: actualModel,
         };
       } catch (err: any) {
         if (err.name === "AbortError") {
@@ -234,8 +256,8 @@ export async function callAI({
       }
     }
 
-    throw new Error(providerName
-      ? `Selected provider "${providerName}" failed:\n${lastError.join("\n")}`
+    throw new Error(modelId
+      ? `Model "${modelId}" failed:\n${lastError.join("\n")}`
       : `All AI providers failed:\n${lastError.join("\n")}`);
   } finally {
     clearTimeout(overallTimeout);
