@@ -9,8 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Megaphone, Sparkles, Send, Loader2, Upload, X, FileText, Trash2,
   ChevronDown, ChevronRight, Monitor, Smartphone, Copy, RotateCcw,
-  Image as FileImage, File, Brain, Users, History
+  Image as FileImage, File, Brain, Users, History,
+  CheckCircle2, Circle
 } from "lucide-react";
+import ContactSelect from "@/components/contact-select";
 import { formatDateTime } from "@/lib/utils";
 
 export default function BroadcastsPage() {
@@ -22,6 +24,8 @@ export default function BroadcastsPage() {
   const [contactCount, setContactCount] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
 
+  const [recipientMode, setRecipientMode] = useState<"all" | "select">("all");
+  const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<{ name: string; mime: string; content: string; size: number }[]>([]);
   const [campaignName, setCampaignName] = useState("");
@@ -141,25 +145,39 @@ export default function BroadcastsPage() {
 
   const sendBroadcast = async () => {
     if (!result || !campaignName.trim()) return;
+    if (recipientMode === "select" && selectedContacts.length === 0) {
+      addToast({ title: "Select at least one contact", variant: "destructive" });
+      return;
+    }
     setSending(true);
     try {
+      const body: any = {
+        name: campaignName.trim(),
+        subject: editSubject,
+        html: editHtml,
+        text: editText,
+        from: "Xyberclan <hello@xyberclan.dev>",
+        sendNow: true,
+      };
+      if (recipientMode === "select") {
+        body.customRecipients = selectedContacts.map((c: any) => ({
+          email: c.email,
+          first_name: c.first_name,
+          last_name: c.last_name,
+          company: c.company,
+        }));
+      }
       const res = await fetch("/api/broadcasts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: campaignName.trim(),
-          subject: editSubject,
-          html: editHtml,
-          text: editText,
-          from: "Xyberclan <hello@xyberclan.dev>",
-          sendNow: true,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send");
-      addToast({ title: `Broadcast sent to all ${contactCount} contacts`, variant: "success" });
+      const recipientLabel = recipientMode === "all" ? `all ${contactCount} contacts` : `${selectedContacts.length} contact(s)`;
+      addToast({ title: `Broadcast sent to ${recipientLabel}`, variant: "success" });
       setShowCreate(false);
-      setPrompt(""); setFiles([]); setResult(null); setCampaignName("");
+      setPrompt(""); setFiles([]); setResult(null); setCampaignName(""); setSelectedContacts([]);
       fetchData();
     } catch (err: any) {
       addToast({ title: "Failed to send broadcast", description: err.message, variant: "destructive" });
@@ -199,7 +217,7 @@ export default function BroadcastsPage() {
             <p className="text-sm text-muted-foreground mt-0.5">{broadcasts.length} campaign{broadcasts.length !== 1 ? "s" : ""} sent</p>
           </div>
         </div>
-        <Button size="sm" className="h-9 rounded-xl shadow-sm" onClick={() => { setShowCreate(!showCreate); if (showCreate) { setResult(null); setPrompt(""); setFiles([]); setCampaignName(""); } }}>
+        <Button size="sm" className="h-9 rounded-xl shadow-sm" onClick={() => { setShowCreate(!showCreate); if (showCreate) { setResult(null); setPrompt(""); setFiles([]); setCampaignName(""); setSelectedContacts([]); } }}>
           <Sparkles className="h-4 w-4 mr-1.5" />{showCreate ? "Close" : "New Broadcast"}
         </Button>
       </div>
@@ -214,11 +232,42 @@ export default function BroadcastsPage() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Recipients</label>
-              <div className="flex items-center gap-2 h-9 rounded-xl border border-border/40 bg-muted/30 px-3 text-xs">
-                <Users className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="font-medium text-foreground">All contacts</span>
-                <span className="text-muted-foreground">({contactCount})</span>
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  onClick={() => { setRecipientMode("all"); setSelectedContacts([]); }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                    recipientMode === "all"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {recipientMode === "all" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+                  All contacts ({contactCount})
+                </button>
+                <button
+                  onClick={() => setRecipientMode("select")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                    recipientMode === "select"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {recipientMode === "select" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+                  Select specific
+                </button>
               </div>
+              {recipientMode === "all" ? (
+                <div className="flex items-center gap-2 h-9 rounded-xl border border-border/40 bg-muted/30 px-3 text-xs">
+                  <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="font-medium text-foreground">Everyone in your contact list</span>
+                  <span className="text-muted-foreground">({contactCount})</span>
+                </div>
+              ) : (
+                <ContactSelect multiple selected={selectedContacts} onChange={setSelectedContacts} placeholder="Search and select contacts..." />
+              )}
+              {recipientMode === "select" && selectedContacts.length > 0 && (
+                <p className="text-xs text-muted-foreground">{selectedContacts.length} contact(s) selected</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">AI Model</label>
@@ -351,7 +400,9 @@ export default function BroadcastsPage() {
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={sendBroadcast} disabled={sending || !campaignName.trim()} className="flex-1 rounded-xl shadow-sm">
-                    {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Sending to {contactCount} contacts...</> : <><Send className="h-4 w-4 mr-1.5" />Send to All Contacts ({contactCount})</>}
+                    {sending
+                      ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Sending to {recipientMode === "all" ? contactCount : selectedContacts.length} contact(s)...</>
+                      : <><Send className="h-4 w-4 mr-1.5" />Send to {recipientMode === "all" ? `All Contacts (${contactCount})` : `${selectedContacts.length} Selected`}</>}
                   </Button>
                   <Button variant="ghost" onClick={() => setResult(null)} disabled={sending} className="rounded-xl"><Trash2 className="h-4 w-4 mr-1.5" />Discard</Button>
                 </div>
