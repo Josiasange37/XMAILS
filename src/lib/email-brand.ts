@@ -67,44 +67,26 @@ export function injectLogoIntoHtml(html: string, logoUrl: string, companyName?: 
   if (!logoUrl) return html;
 
   const name = companyName || "Xyberclan";
-  const desc = tagline || "Email Management Platform";
 
-  const logoHtml = `
-    <table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #e5e7eb;">
-      <tr>
-        <td style="width:56px;vertical-align:middle;">
-          <img src="${logoUrl}"
-               alt="${name}"
-               style="width:48px;height:48px;border-radius:50%;display:block;object-fit:cover;"
-          />
-        </td>
-        <td style="vertical-align:middle;padding-left:12px;">
-          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:18px;font-weight:700;color:#1f2937;line-height:1.3;">
-            ${name}
-          </div>
-          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#6b7280;line-height:1.4;margin-top:2px;">
-            ${desc}
-          </div>
-        </td>
-      </tr>
-    </table>
+  const signature = `
+    <div style="margin-top:32px;padding-top:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#6b7280;">
+      <img src="${logoUrl}" alt="${name}" style="width:20px;height:20px;border-radius:4px;vertical-align:middle;margin-right:6px;" />
+      <span style="font-weight:600;color:#374151;">${name}</span>
+      ${tagline ? `<span style="color:#9ca3af;"> &mdash; ${tagline}</span>` : ""}
+    </div>
   `;
 
-  const bodyMatch = html.match(/<body[^>]*>/i);
-  if (bodyMatch) {
-    const bodyTag = bodyMatch[0];
-    return html.replace(bodyTag, bodyTag + logoHtml);
+  const bodyEndMatch = html.match(/<\/body>/i);
+  if (bodyEndMatch) {
+    return html.replace(/<\/body>/i, `${signature}\n</body>`);
   }
 
-  const headEndMatch = html.match(/<\/head>/i);
-  if (headEndMatch) {
-    return html.replace(
-      /<\/head>/i,
-      `</head><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #1f2937;">${logoHtml}`
-    );
+  const htmlEndMatch = html.match(/<\/html>/i);
+  if (htmlEndMatch) {
+    return html.replace(/<\/html>/i, `${signature}\n</html>`);
   }
 
-  return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #1f2937;">${logoHtml}${html}</div>`;
+  return `${html}${signature}`;
 }
 
 export async function injectBranding(html?: string): Promise<string> {
