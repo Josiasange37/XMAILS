@@ -91,15 +91,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: data.message || "Resend error" }, { status: 502 });
     }
 
-    db.from("emails").insert({
-      from_email: from,
-      to_email: to,
-      subject,
-      html,
-      text,
-      tracking_id: data.id,
-      status: "sent",
-    }).then().catch(() => {});
+    (async () => {
+      try {
+        await db.from("emails").insert({
+          from_email: from,
+          to_email: to,
+          subject,
+          html,
+          text,
+          tracking_id: data.id,
+          status: "sent",
+        });
+      } catch {}
+    })();
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
