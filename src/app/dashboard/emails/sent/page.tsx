@@ -178,7 +178,13 @@ export default function SentPage() {
           text: editText,
         }),
       });
-      const data = await res.json();
+      let data: any;
+      try {
+        data = await res.json();
+      } catch {
+        const text = await res.text();
+        throw new Error(`Server returned: ${text.slice(0, 200)}`);
+      }
       if (!res.ok) throw new Error(data.error || "Failed to send");
       addToast({ title: "Email sent to " + toEmail, variant: "success" });
       setResult(null);
