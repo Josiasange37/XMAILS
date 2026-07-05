@@ -1,15 +1,15 @@
 "use client";
 import { PageTransition } from "@/components/page-transition";
-import { useEffect, useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import ContactSelect from "@/components/contact-select";
 import {
-  Megaphone, Sparkles, Send, Loader2, Upload, X, FileText, FileImage, File,
-  Trash2, ChevronUp, Eye, Plus
+  Megaphone, Sparkles, Send, Loader2, Upload, X, FileText, Trash2,
+  ChevronDown, Monitor, Smartphone, Copy, RotateCcw,
+  Image as FileImage, File, Brain, Users, History
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
@@ -19,11 +19,11 @@ export default function BroadcastsPage() {
 
   const [broadcasts, setBroadcasts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [contactCount, setContactCount] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
 
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<{ name: string; mime: string; content: string; size: number }[]>([]);
-  const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
   const [campaignName, setCampaignName] = useState("");
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
@@ -31,7 +31,33 @@ export default function BroadcastsPage() {
   const [editSubject, setEditSubject] = useState("");
   const [editHtml, setEditHtml] = useState("");
   const [editText, setEditText] = useState("");
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [previewTab, setPreviewTab] = useState<"preview" | "html" | "text">("preview");
+  const [showFiles, setShowFiles] = useState(false);
   const [analyticsBroadcast, setAnalyticsBroadcast] = useState<any>(null);
+
+  const [models, setModels] = useState<{ id: string; label: string; provider: string; group: string }[]>([]);
+  const [selectedModel, setSelectedModel] = useState("");
+  const [showModelPicker, setShowModelPicker] = useState(false);
+
+  const groupedModels = useMemo(() => {
+    const map = new Map<string, typeof models>();
+    for (const m of models) {
+      const g = map.get(m.group) || [];
+      g.push(m);
+      map.set(m.group, g);
+    }
+    return Array.from(map.entries()).map(([group, models]) => ({ group, models }));
+  }, [models]);
+
+  useEffect(() => {
+    fetch("/api/ai/models").then((r) => r.json()).then((d) => {
+      if (d.models?.length) {
+        setModels(d.models);
+        if (!selectedModel) setSelectedModel(d.models[0].id);
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (result) {
@@ -43,12 +69,14 @@ export default function BroadcastsPage() {
 
   const fetchData = () => {
     setLoading(true);
-    fetch("/api/broadcasts")
-      .then((r) => r.json())
-      .then((data) => {
-        setBroadcasts(Array.isArray(data) ? data : []);
-        setLoading(false);
-      });
+    Promise.all([
+      fetch("/api/broadcasts").then((r) => r.json()),
+      fetch("/api/contacts").then((r) => r.json()).catch(() => ({ contacts: [] })),
+    ]).then(([broadcastsData, contactsData]) => {
+      setBroadcasts(Array.isArray(broadcastsData) ? broadcastsData : []);
+      setContactCount(contactsData?.contacts?.length || 0);
+      setLoading(false);
+    });
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -57,11 +85,14 @@ export default function BroadcastsPage() {
     const uploaded = e.target.files;
     if (!uploaded) return;
     Array.from(uploaded).forEach((file) => {
-      if (files.length >= 5) return;
+      if (files.length + Array.from(uploaded).indexOf(file) >= 5) return;
       const reader = new FileReader();
       reader.onload = () => {
         const base64 = (reader.result as string).split(",")[1];
-        setFiles((prev) => [...prev, { name: file.name, mime: file.type, content: base64, size: file.size }]);
+        setFiles((prev) => [
+          ...prev,
+          { name: file.name, mime: file.type, content: base64, size: file.size },
+        ]);
       };
       reader.readAsDataURL(file);
     });
@@ -72,18 +103,8 @@ export default function BroadcastsPage() {
 
   const generateEmail = async () => {
     if (!prompt.trim()) return;
-    if (selectedContacts.length === 0) {
-      addToast({ title: "Select at least one contact", variant: "destructive" });
-      return;
-    }
     setGenerating(true);
     setResult(null);
-    const c = selectedContacts[0];
-    const sampleName = c ? [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email : "a contact";
-    const sampleContext = c
-      ? `This email will be sent to multiple contacts. Use "${sampleName}" as a sample recipient for personalization and {{first_name}} as a placeholder for contact names.\n\n`
-      : "";
-    const fullPrompt = sampleContext + prompt.trim();
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 90000);
@@ -91,9 +112,9 @@ export default function BroadcastsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: fullPrompt,
+          prompt: `This is a broadcast to all contacts. Do NOT use [[first_name]] placeholders — generate a single email that works for everyone.\n\n${prompt.trim()}`,
           files: files.length > 0 ? files : undefined,
-          contact: selectedContacts.length === 1 ? selectedContacts[0] : null,
+          model: selectedModel,
         }),
         signal: controller.signal,
       });
@@ -119,15 +140,9 @@ export default function BroadcastsPage() {
   };
 
   const sendBroadcast = async () => {
-    if (!result || selectedContacts.length === 0 || !campaignName.trim()) return;
+    if (!result || !campaignName.trim()) return;
     setSending(true);
     try {
-      const recipients = selectedContacts.map((c: any) => ({
-        email: c.email,
-        first_name: c.first_name,
-        last_name: c.last_name,
-        company: c.company,
-      }));
       const res = await fetch("/api/broadcasts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -138,14 +153,13 @@ export default function BroadcastsPage() {
           text: editText,
           from: "Xyberclan <hello@xyberclan.dev>",
           sendNow: true,
-          customRecipients: recipients,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send");
-      addToast({ title: `Broadcast sent to ${recipients.length} recipient(s)`, variant: "success" });
+      addToast({ title: `Broadcast sent to all ${contactCount} contacts`, variant: "success" });
       setShowCreate(false);
-      setPrompt(""); setFiles([]); setSelectedContacts([]); setResult(null); setCampaignName("");
+      setPrompt(""); setFiles([]); setResult(null); setCampaignName("");
       fetchData();
     } catch (err: any) {
       addToast({ title: "Failed to send broadcast", description: err.message, variant: "destructive" });
@@ -174,91 +188,189 @@ export default function BroadcastsPage() {
 
   return (
     <PageTransition>
-    <div className="max-w-6xl space-y-5">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[28px] font-bold tracking-tight">Broadcasts</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{broadcasts.length} campaign{broadcasts.length !== 1 ? "s" : ""} sent</p>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Megaphone className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-[28px] font-bold tracking-tight">Broadcasts</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{broadcasts.length} campaign{broadcasts.length !== 1 ? "s" : ""} sent</p>
+          </div>
         </div>
-        <Button size="sm" className="h-9 rounded-xl shadow-sm" onClick={() => { setShowCreate(!showCreate); if (showCreate) { setResult(null); setPrompt(""); setFiles([]); setSelectedContacts([]); setCampaignName(""); } }}>
-          {showCreate ? <ChevronUp className="h-4 w-4 mr-1.5" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
-          {showCreate ? "Close" : "New"}
+        <Button size="sm" className="h-9 rounded-xl shadow-sm" onClick={() => { setShowCreate(!showCreate); if (showCreate) { setResult(null); setPrompt(""); setFiles([]); setCampaignName(""); } }}>
+          <Sparkles className="h-4 w-4 mr-1.5" />{showCreate ? "Close" : "New Broadcast"}
         </Button>
       </div>
 
       {showCreate && (
-        <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm p-5 space-y-5">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-            <div className="lg:col-span-3 space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Campaign name</label>
-                <Input placeholder="e.g. Q3 Product Launch" value={campaignName} onChange={(e) => setCampaignName(e.target.value)} className="rounded-xl h-9" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">What is this broadcast about?</label>
-                <Textarea placeholder="Describe the email you want. AI already knows who the recipients are." rows={4} value={prompt} onChange={(e) => setPrompt(e.target.value)} className="rounded-xl" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Recipients</label>
-                <ContactSelect multiple selected={selectedContacts} onChange={setSelectedContacts} placeholder="Search and select contacts..." />
-                {selectedContacts.length > 0 && <p className="text-xs text-muted-foreground">{selectedContacts.length} contact(s) selected</p>}
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Attachments (optional)</label>
-                <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} accept="image/*,.pdf,.doc,.docx,.txt" />
-                <div className="flex flex-wrap gap-1.5">
-                  {files.map((f, i) => (
-                    <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-border/40 bg-card/60 text-xs">
-                      {fileIcon(f.mime)}
-                      <span className="text-foreground truncate max-w-[120px]">{f.name}</span>
-                      <button onClick={() => removeFile(i)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
-                    </div>
-                  ))}
-                  {files.length < 5 && (
-                    <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1 rounded-xl border border-dashed border-border/60 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                      <Upload className="h-3.5 w-3.5" /> Add file
-                    </button>
-                  )}
-                </div>
-              </div>
-              <Button onClick={generateEmail} disabled={generating || !prompt.trim() || selectedContacts.length === 0 || !campaignName.trim()} size="lg" className="w-full rounded-xl shadow-sm">
-                {generating ? <><Loader2 className="h-5 w-5 mr-2 animate-spin" />Generating...</> : <><Sparkles className="h-5 w-5 mr-2" />Generate Broadcast</>}
-              </Button>
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
+        <div className="xl:col-span-2 space-y-5">
+          <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm p-5 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Campaign name</label>
+              <Input placeholder="e.g. Product Update — July 2026" value={campaignName} onChange={(e) => setCampaignName(e.target.value)} className="rounded-xl h-9" />
             </div>
-
-            <div className="lg:col-span-2">
-              <div className="sticky top-6">
-                <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-3"><Eye className="h-3.5 w-3.5" />Preview</span>
-                {result ? (
-                  <div className="space-y-4">
-                    <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Subject</label><Input value={editSubject} onChange={(e) => setEditSubject(e.target.value)} className="text-sm font-medium rounded-xl h-9" /></div>
-                    <iframe srcDoc={editHtml} className="w-full h-48 rounded-xl border border-border/40" title="Preview" sandbox="allow-same-origin" />
-                    <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">HTML</label><Textarea value={editHtml} onChange={(e) => setEditHtml(e.target.value)} rows={4} className="text-xs font-mono rounded-xl" /></div>
-                    <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Plain text</label><Textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={2} className="text-xs font-mono rounded-xl" /></div>
-                    <Button onClick={sendBroadcast} disabled={sending} className="w-full rounded-xl shadow-sm" size="lg">
-                      {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Sending to {selectedContacts.length} contact(s)...</> : <><Send className="h-4 w-4 mr-1.5" />Send to {selectedContacts.length} contact(s)</>}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border-2 border-dashed border-border/40 p-8 text-center">
-                    <Megaphone className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">{generating ? "Generating..." : "Preview will appear here"}</p>
-                  </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Recipients</label>
+              <div className="flex items-center gap-2 h-9 rounded-xl border border-border/40 bg-muted/30 px-3 text-xs">
+                <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="font-medium text-foreground">All contacts</span>
+                <span className="text-muted-foreground">({contactCount})</span>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">AI Model</label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowModelPicker(!showModelPicker)}
+                  className="flex items-center gap-2 w-full h-9 rounded-xl border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors hover:bg-muted/40"
+                >
+                  <Brain className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="flex-1 text-left truncate">
+                    {models.find((m) => m.id === selectedModel)?.label?.replace(/[⭐].*$/, "").trim() || "Select a model..."}
+                  </span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                </button>
+                {showModelPicker && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowModelPicker(false)} />
+                    <div className="absolute z-50 top-full mt-1 left-0 right-0 max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-lg backdrop-blur-xl">
+                      {groupedModels.map((group) => (
+                        <div key={group.group}>
+                          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 sticky top-0">
+                            {group.group}
+                          </div>
+                          {group.models.map((m) => {
+                            const isBest = m.label.includes("⭐ Best for emails") || m.label.includes("⭐ Fast + quality");
+                            const isSelected = m.id === selectedModel;
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => { setSelectedModel(m.id); setShowModelPicker(false); }}
+                                className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
+                                  isSelected
+                                    ? "bg-primary/10 text-primary font-medium"
+                                    : "hover:bg-muted/40 text-foreground"
+                                }`}
+                              >
+                                <span className="flex-1 truncate">{m.label}</span>
+                                {isBest && <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-medium">Best for emails</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">What should this broadcast say?</label>
+              <Textarea placeholder="Describe the email for all your contacts. No placeholders needed — it's a single message for everyone." rows={5} value={prompt} onChange={(e) => setPrompt(e.target.value)} className="rounded-xl" />
+            </div>
+            <div>
+              <button onClick={() => setShowFiles(!showFiles)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                {showFiles ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                <Upload className="h-3.5 w-3.5" />Attachments{files.length > 0 && <span className="text-primary font-medium"> ({files.length})</span>}
+              </button>
+              {showFiles && (
+                <div className="mt-2 space-y-2">
+                  <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed rounded-xl p-3 text-center cursor-pointer hover:bg-muted/40 transition-colors">
+                    <Upload className="h-5 w-5 text-muted-foreground mx-auto mb-1" />
+                    <p className="text-xs text-muted-foreground">Click to upload images, PDFs, or documents</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Max 5 files</p>
+                  </div>
+                  <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} accept="image/*,.pdf,.doc,.docx,.txt" />
+                  {files.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {files.map((f, i) => (
+                        <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-border/40 bg-card/60 text-xs">
+                          {fileIcon(f.mime)}
+                          <span className="text-foreground truncate max-w-[100px]">{f.name}</span>
+                          <button onClick={() => removeFile(i)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <Button onClick={generateEmail} disabled={generating || !prompt.trim() || !campaignName.trim()} className="w-full rounded-xl shadow-sm" size="lg">
+              {generating ? <><Loader2 className="h-5 w-5 mr-2 animate-spin" />Generating...</> : <><Sparkles className="h-5 w-5 mr-2" />Generate Broadcast</>}
+            </Button>
           </div>
         </div>
+
+        <div className="xl:col-span-3">
+          <div className="sticky top-6 rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm overflow-hidden">
+            {!result ? (
+              <div className="text-center py-16 px-5">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted/60 mb-4"><Sparkles className="h-7 w-7 text-muted-foreground/40" /></div>
+                <p className="text-sm text-muted-foreground">{generating ? "Generating your broadcast..." : "Your broadcast preview will appear here"}</p>
+                <p className="text-xs text-muted-foreground mt-1">{generating ? "This may take up to a minute" : "Describe your email and click Generate"}</p>
+              </div>
+            ) : (
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">Subject</label>
+                  <div className="relative">
+                    <Input value={editSubject} onChange={(e) => setEditSubject(e.target.value)} className="text-sm font-medium rounded-xl h-9 pr-8" />
+                    <button onClick={() => { navigator.clipboard.writeText(editSubject); addToast({ title: "Subject copied", variant: "success" }); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><Copy className="h-3.5 w-3.5" /></button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-0.5">
+                    {(["preview", "html", "text"] as const).map((tab) => (
+                      <button key={tab} onClick={() => setPreviewTab(tab)} className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${previewTab === tab ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                  {previewTab === "preview" && (
+                    <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-0.5">
+                      <button onClick={() => setPreviewMode("desktop")} className={`p-1.5 rounded-md transition-colors ${previewMode === "desktop" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><Monitor className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => setPreviewMode("mobile")} className={`p-1.5 rounded-md transition-colors ${previewMode === "mobile" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><Smartphone className="h-3.5 w-3.5" /></button>
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-xl border border-border/40 overflow-hidden">
+                  {previewTab === "preview" ? (
+                    <div className={previewMode === "mobile" ? "mx-auto max-w-[375px]" : "w-full"}>
+                      <iframe srcDoc={editHtml} className={`w-full border-0 ${previewMode === "mobile" ? "h-[500px]" : "h-[350px]"}`} title="Email preview" sandbox="allow-same-origin" />
+                    </div>
+                  ) : previewTab === "html" ? (
+                    <Textarea value={editHtml} onChange={(e) => setEditHtml(e.target.value)} rows={12} className="text-xs font-mono border-0 rounded-none resize-y" />
+                  ) : (
+                    <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={8} className="text-xs font-mono border-0 rounded-none resize-y" />
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={sendBroadcast} disabled={sending || !campaignName.trim()} className="flex-1 rounded-xl shadow-sm">
+                    {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Sending to {contactCount} contacts...</> : <><Send className="h-4 w-4 mr-1.5" />Send to All Contacts ({contactCount})</>}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setResult(null)} disabled={sending} className="rounded-xl"><Trash2 className="h-4 w-4 mr-1.5" />Discard</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       )}
 
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold tracking-tight text-foreground/80">Past Campaigns</h2>
-        {loading ? <div className="text-center py-12 text-sm text-muted-foreground">Loading...</div>
-        : broadcasts.length === 0 && !showCreate ? (
+        <h2 className="text-sm font-semibold tracking-tight text-foreground/80 flex items-center gap-1.5"><History className="h-4 w-4" />Past Campaigns</h2>
+        {loading ? (
+          <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm text-center py-12 text-sm text-muted-foreground">Loading...</div>
+        ) : broadcasts.length === 0 && !showCreate ? (
           <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm text-center py-12">
             <Megaphone className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground mb-1">No broadcasts yet</p>
-            <p className="text-xs text-muted-foreground mb-4">Create your first campaign to reach your audience</p>
+            <p className="text-xs text-muted-foreground mb-4">Create your first campaign to reach all your contacts</p>
             <Button size="sm" className="h-9 rounded-xl shadow-sm" onClick={() => setShowCreate(true)}><Sparkles className="h-4 w-4 mr-1.5" />Create</Button>
           </div>
         ) : (

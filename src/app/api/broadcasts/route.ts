@@ -75,6 +75,22 @@ export async function POST(request: NextRequest) {
             : null;
         })
         .filter((r): r is NonNullable<typeof r> => r !== null);
+    } else if (sendNow) {
+      const { data: allContacts, error: contactsError } = await db
+        .from("contacts")
+        .select("email, first_name, last_name, company")
+        .not("email", "is", null);
+
+      if (contactsError) throw contactsError;
+
+      recipients = (allContacts || [])
+        .filter((c: any) => c.email)
+        .map((c: any) => ({
+          email: c.email,
+          first_name: c.first_name,
+          last_name: c.last_name,
+          company: c.company,
+        }));
     }
 
     const personalize = (template: string, r: Recipient) =>
