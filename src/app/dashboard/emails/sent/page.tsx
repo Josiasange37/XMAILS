@@ -1,6 +1,6 @@
 "use client";
 import { PageTransition } from "@/components/page-transition";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,32 @@ export default function SentPage() {
 
   const [models, setModels] = useState<{ id: string; label: string; provider: string; group: string }[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
+  const [showModelPicker, setShowModelPicker] = useState(false);
+
+  const groupedModels = useMemo(() => {
+    const map = new Map<string, typeof models>();
+    for (const m of models) {
+      const g = map.get(m.group) || [];
+      g.push(m);
+      map.set(m.group, g);
+    }
+    return Array.from(map.entries()).map(([group, models]) => ({ group, models }));
+  }, [models]);
+
+  function ModelTip({ modelId, models }: { modelId: string; models: { id: string; label: string }[] }) {
+    const m = models.find((x) => x.id === modelId);
+    if (!m) return null;
+    const isBest = m.label.includes("⭐");
+    const tip = isBest
+      ? "Best model for email writing — clean prose, reliable JSON output"
+      : "Available and configured";
+    return (
+      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+        {isBest && <span className="text-amber-500">⭐</span>}
+        {tip}
+      </p>
+    );
+  }
 
   useEffect(() => {
     fetch("/api/ai/models").then((r) => r.json()).then((d) => {
@@ -303,21 +329,56 @@ export default function SentPage() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">AI Model</label>
-              <div className="flex items-center gap-2">
-                <Brain className="h-4 w-4 text-muted-foreground shrink-0" />
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  className="flex h-9 w-full rounded-xl border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowModelPicker(!showModelPicker)}
+                  className="flex items-center gap-2 w-full h-9 rounded-xl border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors hover:bg-muted/40"
                 >
-                  {models.length === 0 && <option value="">Loading models...</option>}
-                  {models.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
+                  <Brain className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="flex-1 text-left truncate">
+                    {models.find((m) => m.id === selectedModel)?.label?.replace(/[⭐].*$/, "").trim() || "Select a model..."}
+                  </span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                </button>
+                {showModelPicker && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowModelPicker(false)} />
+                    <div className="absolute z-50 top-full mt-1 left-0 right-0 max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-lg backdrop-blur-xl">
+                      {groupedModels.length === 0 && (
+                        <div className="px-3 py-6 text-center text-xs text-muted-foreground">Loading models...</div>
+                      )}
+                      {groupedModels.map((group) => (
+                        <div key={group.group}>
+                          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 sticky top-0">
+                            {group.group}
+                          </div>
+                          {group.models.map((m) => {
+                            const isBest = m.label.includes("⭐ Best for emails") || m.label.includes("⭐ Fast + quality");
+                            const isSelected = m.id === selectedModel;
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => { setSelectedModel(m.id); setShowModelPicker(false); }}
+                                className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
+                                  isSelected
+                                    ? "bg-primary/10 text-primary font-medium"
+                                    : "hover:bg-muted/40 text-foreground"
+                                }`}
+                              >
+                                <span className="flex-1 truncate">{m.label}</span>
+                                {isBest && <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-medium">Best for emails</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
+              <ModelTip modelId={selectedModel} models={models} />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">What should this email say?</label>
