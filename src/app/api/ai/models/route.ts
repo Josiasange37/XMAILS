@@ -114,8 +114,36 @@ const MODELS = [
 
   // ── BigModel / Zhipu AI ───────────────────────────────
   {
+    id: "glm-5.1",
+    label: "GLM-5.1 ⭐ Best reasoning + newest",
+    provider: "bigmodel",
+    group: "BigModel",
+    requiresApiKey: "BIGMODEL_API_KEY",
+  },
+  {
     id: "glm-5",
     label: "GLM-5 — flagship",
+    provider: "bigmodel",
+    group: "BigModel",
+    requiresApiKey: "BIGMODEL_API_KEY",
+  },
+  {
+    id: "glm-5-turbo",
+    label: "GLM-5 Turbo — fast thinking",
+    provider: "bigmodel",
+    group: "BigModel",
+    requiresApiKey: "BIGMODEL_API_KEY",
+  },
+  {
+    id: "glm-4.7",
+    label: "GLM-4.7 — strong reasoning",
+    provider: "bigmodel",
+    group: "BigModel",
+    requiresApiKey: "BIGMODEL_API_KEY",
+  },
+  {
+    id: "glm-4.7-flash",
+    label: "GLM-4.7 Flash — free, 203K context",
     provider: "bigmodel",
     group: "BigModel",
     requiresApiKey: "BIGMODEL_API_KEY",

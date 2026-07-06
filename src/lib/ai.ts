@@ -28,7 +28,7 @@ const PROVIDERS = [
     name: "bigmodel",
     endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
     apiKey: () => process.env.BIGMODEL_API_KEY,
-    model: "glm-5",
+    model: "glm-5.1",
   },
 ];
 
@@ -180,7 +180,11 @@ const modelProviderMap: Record<string, string> = {
   "llama-3.3-70b-versatile": "groq",
   "llama-4-scout-17b-16e-instruct": "groq",
   "openai/gpt-oss-120b": "groq",
+  "glm-5.1": "bigmodel",
   "glm-5": "bigmodel",
+  "glm-5-turbo": "bigmodel",
+  "glm-4.7": "bigmodel",
+  "glm-4.7-flash": "bigmodel",
   "glm-4-flash": "bigmodel",
 };
 
