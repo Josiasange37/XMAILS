@@ -84,7 +84,7 @@ const MODELS = [
 
   // ── Groq ──────────────────────────────────────────────
   {
-    id: "qwen-3-32b",
+    id: "qwen/qwen3-32b",
     label: "Qwen 3 32B (Groq) ⭐ Fast + quality",
     provider: "groq",
     group: "Groq",
@@ -98,7 +98,7 @@ const MODELS = [
     requiresApiKey: "GROQ_API_KEY",
   },
   {
-    id: "llama-4-scout-17b-16e-instruct",
+    id: "meta-llama/llama-4-scout-17b-16e-instruct",
     label: "Llama 4 Scout 17B (Groq) — fastest",
     provider: "groq",
     group: "Groq",
