@@ -1,9 +1,9 @@
 const MAX_TOKENS = 4096;
 const GROQ_MAX_TOKENS = 8192;
-const PER_ATTEMPT_TIMEOUT_MS = 15000;
-const MAX_TOTAL_TIMEOUT_MS = 130000;
-const MAX_RETRIES = 2;
-const PROVIDER_COOLDOWN_MS = 60000;
+const PER_ATTEMPT_TIMEOUT_MS = 25000;
+const MAX_TOTAL_TIMEOUT_MS = 90000;
+const MAX_RETRIES = 1;
+const PROVIDER_COOLDOWN_MS = 30000;
 const OR_REFERER = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 const providerCooldown = new Map<string, number>();
@@ -251,7 +251,7 @@ export async function callAI({
   let providers: typeof PROVIDERS;
   if (providerName) {
     const preferred = PROVIDERS.find((p) => p.name === providerName);
-    providers = preferred ? [preferred, ...PROVIDERS.filter((p) => p.name !== providerName)] : PROVIDERS;
+    providers = preferred ? [preferred] : PROVIDERS;
   } else {
     providers = PROVIDERS;
   }
@@ -324,8 +324,9 @@ export async function callAI({
       }
     }
 
-    const discoveryKey = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY_2;
-    if (discoveryKey) {
+    if (!modelId) {
+      const discoveryKey = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY_2;
+      if (discoveryKey) {
       try {
         const modelsRes = await fetch("https://openrouter.ai/api/v1/models", {
           signal: AbortSignal.timeout(5000),
@@ -382,7 +383,7 @@ export async function callAI({
     }
 
     throw new Error(modelId
-      ? `Model "${modelId}" failed:\n${lastError.join("\n")}`
+      ? `${lastError[0] || "unknown error"}`
       : `All AI providers failed:\n${lastError.join("\n")}`);
   } finally {
     clearTimeout(overallTimeout);

@@ -111,7 +111,7 @@ export default function BroadcastsPage() {
     setResult(null);
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 140000);
+      const timeout = setTimeout(() => controller.abort(), 100000);
       const res = await fetch("/api/ai/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
