@@ -16,7 +16,7 @@ const PROVIDERS = [
     name: "openrouter2",
     apiKey: () => process.env.OPENROUTER_API_KEY_2,
     endpoint: "https://openrouter.ai/api/v1/chat/completions",
-    model: "qwen/qwen-2.5-72b-instruct:free",
+    model: "nvidia/nemotron-3-super-120b-a12b:free",
   },
   {
     name: "groq",
@@ -158,15 +158,15 @@ async function fetchCompletion(
 }
 
 const modelProviderMap: Record<string, string> = {
+  "meta-llama/llama-3.3-70b-instruct:free": "openrouter1",
   "openai/gpt-oss-120b:free": "openrouter1",
   "qwen/qwen3-next-80b-a3b-instruct:free": "openrouter1",
-  "meta-llama/llama-3.3-70b-instruct:free": "openrouter1",
   "nousresearch/hermes-3-llama-3.1-405b:free": "openrouter1",
   "google/gemma-4-26b-a4b-it:free": "openrouter1",
+  "google/gemma-4-31b-it:free": "openrouter1",
   "nvidia/nemotron-3-super-120b-a12b:free": "openrouter1",
   "openai/gpt-oss-20b:free": "openrouter1",
   "openrouter/free": "openrouter1",
-  "qwen/qwen-2.5-72b-instruct:free": "openrouter2",
   "qwen-3-32b": "groq",
   "llama-3.3-70b-versatile": "groq",
   "llama-4-scout-17b-16e-instruct": "groq",

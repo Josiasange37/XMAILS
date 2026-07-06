@@ -3,8 +3,15 @@ import { NextResponse } from "next/server";
 const MODELS = [
   // ── OpenRouter (FREE) ──────────────────────────────────
   {
+    id: "meta-llama/llama-3.3-70b-instruct:free",
+    label: "Llama 3.3 70B (Free) ⭐ Best for emails",
+    provider: "openrouter1",
+    group: "OpenRouter",
+    requiresApiKey: "OPENROUTER_API_KEY",
+  },
+  {
     id: "openai/gpt-oss-120b:free",
-    label: "GPT-OSS 120B (Free) ⭐ Best for emails",
+    label: "GPT-OSS 120B (Free)",
     provider: "openrouter1",
     group: "OpenRouter",
     requiresApiKey: "OPENROUTER_API_KEY",
@@ -12,13 +19,6 @@ const MODELS = [
   {
     id: "qwen/qwen3-next-80b-a3b-instruct:free",
     label: "Qwen3 Next 80B (Free) ⭐",
-    provider: "openrouter1",
-    group: "OpenRouter",
-    requiresApiKey: "OPENROUTER_API_KEY",
-  },
-  {
-    id: "meta-llama/llama-3.3-70b-instruct:free",
-    label: "Llama 3.3 70B (Free)",
     provider: "openrouter1",
     group: "OpenRouter",
     requiresApiKey: "OPENROUTER_API_KEY",
@@ -38,8 +38,15 @@ const MODELS = [
     requiresApiKey: "OPENROUTER_API_KEY",
   },
   {
+    id: "google/gemma-4-31b-it:free",
+    label: "Gemma 4 31B (Free)",
+    provider: "openrouter1",
+    group: "OpenRouter",
+    requiresApiKey: "OPENROUTER_API_KEY",
+  },
+  {
     id: "nvidia/nemotron-3-super-120b-a12b:free",
-    label: "Nemotron 3 Super 120B (Free)",
+    label: "Nemotron 3 Super 120B (Free) — 1M context",
     provider: "openrouter1",
     group: "OpenRouter",
     requiresApiKey: "OPENROUTER_API_KEY",
@@ -61,8 +68,15 @@ const MODELS = [
 
   // ── OpenRouter (via 2nd key) ───────────────────────────
   {
-    id: "qwen/qwen-2.5-72b-instruct:free",
-    label: "Qwen 2.5 72B (Free) — 2nd key",
+    id: "nvidia/nemotron-3-super-120b-a12b:free",
+    label: "Nemotron 3 Super 120B (Free) — 2nd key",
+    provider: "openrouter2",
+    group: "OpenRouter (2nd key)",
+    requiresApiKey: "OPENROUTER_API_KEY_2",
+  },
+  {
+    id: "qwen/qwen3-coder:free",
+    label: "Qwen3 Coder 480B (Free) — 2nd key",
     provider: "openrouter2",
     group: "OpenRouter (2nd key)",
     requiresApiKey: "OPENROUTER_API_KEY_2",
