@@ -20,6 +20,18 @@ function isProviderOnCooldown(name: string): boolean {
 
 const PROVIDERS = [
   {
+    name: "bigmodel",
+    endpoint: "https://api.z.ai/api/paas/v4/chat/completions",
+    apiKey: () => process.env.BIGMODEL_API_KEY,
+    model: "glm-5.1",
+  },
+  {
+    name: "bigmodel-legacy",
+    endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    apiKey: () => process.env.BIGMODEL_API_KEY,
+    model: "glm-4-flash",
+  },
+  {
     name: "openrouter1",
     apiKey: () => process.env.OPENROUTER_API_KEY,
     endpoint: "https://openrouter.ai/api/v1/chat/completions",
@@ -37,30 +49,18 @@ const PROVIDERS = [
     apiKey: () => process.env.GROQ_API_KEY,
     model: "llama-3.3-70b-versatile",
   },
-  {
-    name: "bigmodel",
-    endpoint: "https://api.z.ai/api/paas/v4/chat/completions",
-    apiKey: () => process.env.BIGMODEL_API_KEY,
-    model: "glm-5.1",
-  },
-  {
-    name: "bigmodel-legacy",
-    endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-    apiKey: () => process.env.BIGMODEL_API_KEY,
-    model: "glm-4-flash",
-  },
 ];
 
-const JSON_INSTRUCTION = `OUTPUT FORMAT: Your entire response must be ONLY a JSON object with exactly 3 fields. No greeting. No explanation. No markdown. No code fences. No thinking. Start with { and end with }.
+const JSON_INSTRUCTION = `OUTPUT FORMAT: Your entire response must be ONLY a JSON object with exactly 3 fields. No greeting. No explanation. No markdown. No code fences. No thinking. Use DOUBLE QUOTES for all strings, never backticks. Start with { and end with }.
 
 {"subject": "your subject line here", "html": "<p>your email HTML here</p>", "text": "your plain text here"}
 
 Fields:
 - subject: compelling subject line (under 60 chars, no ALL CAPS)
-- html: email body HTML (content only — no logo, header, or footer)
-- text: plain text version
+- html: email body HTML as a double-quoted string (content only — no logo, header, or footer)
+- text: plain text version as a double-quoted string
 
-Again: respond with ONLY the JSON. Start with {. End with }. Nothing else.`;
+Again: respond with ONLY the JSON using double quotes. Start with {. End with }. Nothing else.`;
 
 function extractRetryAfter(body: string): number | null {
   const match = body.match(/try again in (\d+(?:\.\d+)?)\s*s/);
@@ -73,21 +73,45 @@ function extractRetryAfter(body: string): number | null {
 
 function extractJson(raw: string): any {
   const cleaned = raw.trim();
-  try { return JSON.parse(cleaned); } catch {}
-  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (jsonMatch) { try { return JSON.parse(jsonMatch[0]); } catch {} }
-  const noTicks = cleaned.replace(/```json\s*/gi, "").replace(/```\s*$/g, "").replace(/`/g, "").trim();
-  try { return JSON.parse(noTicks); } catch {}
+
+  const tryParse = (s: string) => { try { return JSON.parse(s); } catch { return null; } };
+
+  let result = tryParse(cleaned);
+  if (result) return result;
+
+  const jsonBlock = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonBlock) {
+    result = tryParse(jsonBlock[0]);
+    if (result) return result;
+  }
+
+  const unmarked = cleaned.replace(/```json\s*/gi, "").replace(/```\s*$/g, "").trim();
+  result = tryParse(unmarked);
+  if (result) return result;
+
+  const backtickFixed = unmarked.replace(/(:\s*?)`([^`]*)`/g, '$1"$2"');
+  result = tryParse(backtickFixed);
+  if (result) return result;
+
+  const allQuotes = unmarked.replace(/`/g, '"');
+  result = tryParse(allQuotes);
+  if (result) return result;
+
   const partialMatch = cleaned.match(/\{(?:[^{}]|(?:\{[^{}]*\}))*\}/);
-  if (partialMatch) { try { return JSON.parse(partialMatch[0]); } catch {} }
+  if (partialMatch) {
+    result = tryParse(partialMatch[0]);
+    if (result) return result;
+  }
+
   const lastBrace = cleaned.lastIndexOf("{");
   if (lastBrace !== -1) {
     const partial = cleaned.slice(lastBrace);
-    const repaired = partial + '" }';
-    try { return JSON.parse(repaired); } catch {}
-    const repaired2 = partial.replace(/["\s]*$/, '"}');
-    try { return JSON.parse(repaired2); } catch {}
+    result = tryParse(partial + '"}');
+    if (result) return result;
+    result = tryParse(partial.replace(/["\s]*$/, '"}'));
+    if (result) return result;
   }
+
   throw new Error("Could not extract valid JSON from response");
 }
 
