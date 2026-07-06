@@ -380,11 +380,13 @@ export async function callAI({
       } catch (e: any) {
         lastError.push(`discovery: ${e.message}`);
       }
+      }
     }
 
-    throw new Error(modelId
-      ? `${lastError[0] || "unknown error"}`
-      : `All AI providers failed:\n${lastError.join("\n")}`);
+    if (modelId) {
+      throw new Error(lastError[0] || "unknown error");
+    }
+    throw new Error(`All AI providers failed:\n${lastError.join("\n")}`);
   } finally {
     clearTimeout(overallTimeout);
   }
