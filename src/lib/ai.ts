@@ -3,7 +3,20 @@ const GROQ_MAX_TOKENS = 8192;
 const PER_ATTEMPT_TIMEOUT_MS = 15000;
 const MAX_TOTAL_TIMEOUT_MS = 130000;
 const MAX_RETRIES = 2;
+const PROVIDER_COOLDOWN_MS = 60000;
 const OR_REFERER = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+const providerCooldown = new Map<string, number>();
+
+function isProviderOnCooldown(name: string): boolean {
+  const until = providerCooldown.get(name);
+  if (!until) return false;
+  if (Date.now() > until) {
+    providerCooldown.delete(name);
+    return false;
+  }
+  return true;
+}
 
 const PROVIDERS = [
   {
@@ -152,10 +165,9 @@ async function fetchCompletion(
         detail = body.slice(0, 200) || `HTTP ${res.status}`;
       }
 
-      if (res.status === 429 && attempt < MAX_RETRIES) {
-        const wait = extractRetryAfter(body) ?? (attempt === 0 ? 2 : 4);
-        await new Promise((r) => setTimeout(r, wait * 1000));
-        continue;
+      if (res.status === 429) {
+        const wait = extractRetryAfter(body) ?? 0;
+        throw new Error(`HTTP 429: ${detail}`);
       }
 
       throw new Error(`HTTP ${res.status}: ${detail}`);
@@ -233,6 +245,11 @@ export async function callAI({
         continue;
       }
 
+      if (isProviderOnCooldown(provider.name)) {
+        lastError.push(`${provider.name}: rate limited (skipped)`);
+        continue;
+      }
+
       try {
         const msgs = structuredClone(messages);
         appendJsonInstruction(msgs[msgs.length - 1]);
@@ -274,6 +291,9 @@ export async function callAI({
         if (err.name === "AbortError") {
           lastError.push(`${provider.name}: overall timeout`);
           continue;
+        }
+        if (err.message?.startsWith("HTTP 429")) {
+          providerCooldown.set(provider.name, Date.now() + PROVIDER_COOLDOWN_MS);
         }
         lastError.push(`${provider.name}: ${err.message}`);
         continue;
