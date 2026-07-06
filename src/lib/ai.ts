@@ -1,7 +1,7 @@
 const MAX_TOKENS = 4096;
 const GROQ_MAX_TOKENS = 8192;
-const PER_ATTEMPT_TIMEOUT_MS = 25000;
-const MAX_TOTAL_TIMEOUT_MS = 65000;
+const PER_ATTEMPT_TIMEOUT_MS = 20000;
+const MAX_TOTAL_TIMEOUT_MS = 180000;
 const MAX_RETRIES = 2;
 const OR_REFERER = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -26,9 +26,15 @@ const PROVIDERS = [
   },
   {
     name: "bigmodel",
-    endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    endpoint: "https://api.z.ai/api/paas/v4/chat/completions",
     apiKey: () => process.env.BIGMODEL_API_KEY,
     model: "glm-5.1",
+  },
+  {
+    name: "bigmodel-legacy",
+    endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    apiKey: () => process.env.BIGMODEL_API_KEY,
+    model: "glm-4-flash",
   },
 ];
 
