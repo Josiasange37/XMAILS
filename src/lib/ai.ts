@@ -1,7 +1,7 @@
 const MAX_TOKENS = 4096;
 const GROQ_MAX_TOKENS = 8192;
-const PER_ATTEMPT_TIMEOUT_MS = 20000;
-const MAX_TOTAL_TIMEOUT_MS = 180000;
+const PER_ATTEMPT_TIMEOUT_MS = 15000;
+const MAX_TOTAL_TIMEOUT_MS = 130000;
 const MAX_RETRIES = 2;
 const OR_REFERER = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
