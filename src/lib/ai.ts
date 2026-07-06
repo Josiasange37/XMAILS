@@ -261,6 +261,63 @@ export async function callAI({
       }
     }
 
+    const discoveryKey = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY_2;
+    if (discoveryKey) {
+      try {
+        const modelsRes = await fetch("https://openrouter.ai/api/v1/models", {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (modelsRes.ok) {
+          const modelsData = await modelsRes.json();
+          const data = modelsData.data || modelsData;
+          const freeModels = (Array.isArray(data) ? data : [])
+            .filter((m: { id?: string; pricing?: { prompt?: string; completion?: string } }) =>
+              m.id?.endsWith(":free") &&
+              parseFloat(m.pricing?.prompt || "1") === 0 &&
+              parseFloat(m.pricing?.completion || "1") === 0
+            )
+            .map((m: { id: string }) => m.id)
+            .filter((id: string) => !lastError.some((e) => e.includes(id)));
+
+          for (let i = freeModels.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [freeModels[i], freeModels[j]] = [freeModels[j], freeModels[i]];
+          }
+
+          for (const modelId of freeModels.slice(0, 5)) {
+            if (overallSignal.aborted) break;
+            try {
+              const msgs = structuredClone(messages);
+              appendJsonInstruction(msgs[msgs.length - 1]);
+              const raw = await fetchCompletion(
+                "https://openrouter.ai/api/v1/chat/completions",
+                openRouterHeaders(discoveryKey),
+                modelId,
+                msgs,
+                MAX_TOKENS,
+                overallSignal,
+              );
+              let parsed: any;
+              try { parsed = extractJson(raw); } catch { continue; }
+              clearTimeout(overallTimeout);
+              return {
+                subject: (parsed.subject || "").toString(),
+                html: (parsed.html || "").toString(),
+                text: (parsed.text || "").toString(),
+                provider: "discovery",
+                model: modelId,
+              };
+            } catch { continue; }
+          }
+          lastError.push("discovery: no working free model found");
+        } else {
+          lastError.push("discovery: failed to fetch model list");
+        }
+      } catch (e: any) {
+        lastError.push(`discovery: ${e.message}`);
+      }
+    }
+
     throw new Error(modelId
       ? `Model "${modelId}" failed:\n${lastError.join("\n")}`
       : `All AI providers failed:\n${lastError.join("\n")}`);
