@@ -89,7 +89,7 @@ function extractJson(raw: string): any {
   result = tryParse(unmarked);
   if (result) return result;
 
-  const backtickFixed = unmarked.replace(/(:\s*?)`([^`]*)`/g, '$1"$2"');
+  const backtickFixed = unmarked.replace(/(:\s*?)`([^`]*)`/g, (_, p, v) => p + '"' + v.replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"');
   result = tryParse(backtickFixed);
   if (result) return result;
 
