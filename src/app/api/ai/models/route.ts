@@ -68,15 +68,15 @@ const MODELS = [
 
   // ── OpenRouter (via 2nd key) ───────────────────────────
   {
-    id: "nvidia/nemotron-3-super-120b-a12b:free",
-    label: "Nemotron 3 Super 120B (Free) — 2nd key",
+    id: "qwen/qwen3-coder:free",
+    label: "Qwen3 Coder 480B (Free) ⭐ Best structured output",
     provider: "openrouter2",
     group: "OpenRouter (2nd key)",
     requiresApiKey: "OPENROUTER_API_KEY_2",
   },
   {
-    id: "qwen/qwen3-coder:free",
-    label: "Qwen3 Coder 480B (Free) — 2nd key",
+    id: "nvidia/nemotron-3-super-120b-a12b:free",
+    label: "Nemotron 3 Super 120B (Free) — 2nd key",
     provider: "openrouter2",
     group: "OpenRouter (2nd key)",
     requiresApiKey: "OPENROUTER_API_KEY_2",

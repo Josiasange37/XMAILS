@@ -16,7 +16,7 @@ const PROVIDERS = [
     name: "openrouter2",
     apiKey: () => process.env.OPENROUTER_API_KEY_2,
     endpoint: "https://openrouter.ai/api/v1/chat/completions",
-    model: "nvidia/nemotron-3-super-120b-a12b:free",
+    model: "qwen/qwen3-coder:free",
   },
   {
     name: "groq",
@@ -30,9 +30,30 @@ const PROVIDERS = [
     apiKey: () => process.env.BIGMODEL_API_KEY,
     model: "glm-5",
   },
+  {
+    name: "together",
+    apiKey: () => process.env.TOGETHER_API_KEY,
+    endpoint: "https://api.together.xyz/v1/chat/completions",
+    model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+  },
+  {
+    name: "github",
+    apiKey: () => process.env.GITHUB_TOKEN,
+    endpoint: "https://models.inference.ai.azure.com/chat/completions",
+    model: "gpt-4o-mini",
+  },
 ];
 
-const JSON_INSTRUCTION = `Respond with ONLY valid JSON. Think carefully, but output ONLY the JSON. No markdown, no code blocks, no explanations, no reasoning text. Start with { and end with }. The JSON must have exactly these fields: "subject" (string), "html" (string - email body HTML), "text" (string - plain text version).`;
+const JSON_INSTRUCTION = `OUTPUT FORMAT: Your entire response must be ONLY a JSON object with exactly 3 fields. No greeting. No explanation. No markdown. No code fences. No thinking. Start with { and end with }.
+
+{"subject": "your subject line here", "html": "<p>your email HTML here</p>", "text": "your plain text here"}
+
+Fields:
+- subject: compelling subject line (under 60 chars, no ALL CAPS)
+- html: email body HTML (content only — no logo, header, or footer)
+- text: plain text version
+
+Again: respond with ONLY the JSON. Start with {. End with }. Nothing else.`;
 
 function extractRetryAfter(body: string): number | null {
   const match = body.match(/try again in (\d+(?:\.\d+)?)\s*s/);
