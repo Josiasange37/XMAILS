@@ -193,9 +193,13 @@ export async function callAI({
     : overallController.signal;
 
   const providerName = modelId ? modelProviderMap[modelId] : undefined;
-  const providers = providerName
-    ? [PROVIDERS.find((p) => p.name === providerName)].filter(Boolean) as typeof PROVIDERS
-    : PROVIDERS;
+  let providers: typeof PROVIDERS;
+  if (providerName) {
+    const preferred = PROVIDERS.find((p) => p.name === providerName);
+    providers = preferred ? [preferred, ...PROVIDERS.filter((p) => p.name !== providerName)] : PROVIDERS;
+  } else {
+    providers = PROVIDERS;
+  }
 
   try {
     for (const provider of providers) {
@@ -219,7 +223,8 @@ export async function callAI({
           ? openRouterHeaders(apiKey)
           : groqHeaders(apiKey);
 
-        const actualModel = modelId || provider.model;
+        const isFallback = providerName && provider.name !== providerName;
+        const actualModel = isFallback ? provider.model : (modelId || provider.model);
 
         const raw = await fetchCompletion(
           provider.endpoint,
