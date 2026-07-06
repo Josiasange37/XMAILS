@@ -30,18 +30,6 @@ const PROVIDERS = [
     apiKey: () => process.env.BIGMODEL_API_KEY,
     model: "glm-5",
   },
-  {
-    name: "together",
-    apiKey: () => process.env.TOGETHER_API_KEY,
-    endpoint: "https://api.together.xyz/v1/chat/completions",
-    model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-  },
-  {
-    name: "github",
-    apiKey: () => process.env.GITHUB_TOKEN,
-    endpoint: "https://models.inference.ai.azure.com/chat/completions",
-    model: "gpt-4o-mini",
-  },
 ];
 
 const JSON_INSTRUCTION = `OUTPUT FORMAT: Your entire response must be ONLY a JSON object with exactly 3 fields. No greeting. No explanation. No markdown. No code fences. No thinking. Start with { and end with }.
