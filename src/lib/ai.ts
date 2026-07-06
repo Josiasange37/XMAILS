@@ -225,9 +225,9 @@ const modelProviderMap: Record<string, string> = {
   "glm-5.1": "bigmodel",
   "glm-5": "bigmodel",
   "glm-5-turbo": "bigmodel",
-  "glm-4.7": "bigmodel",
-  "glm-4.7-flash": "bigmodel",
-  "glm-4-flash": "bigmodel",
+  "glm-4.7": "bigmodel-legacy",
+  "glm-4.7-flash": "bigmodel-legacy",
+  "glm-4-flash": "bigmodel-legacy",
 };
 
 export async function callAI({
