@@ -71,7 +71,7 @@ export async function getLogoAttachment(): Promise<{ filename: string; content: 
   if (cachedLogo !== false) return cachedLogo;
   const url = FALLBACK_LOGO_URL;
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) { cachedLogo = null; return null; }
     const buf = Buffer.from(await res.arrayBuffer());
     const mime = res.headers.get("content-type") || "image/png";
@@ -82,16 +82,18 @@ export async function getLogoAttachment(): Promise<{ filename: string; content: 
       disposition: "inline",
     };
     return cachedLogo;
-  } catch {
+  } catch (e) {
+    console.error("getLogoAttachment fetch failed:", e instanceof Error ? e.message : e);
     cachedLogo = null;
     return null;
   }
 }
 
-export async function injectLogoIntoHtml(html: string, logoUrl: string | null, companyName?: string, tagline?: string): Promise<string> {
+function injectLogoIntoHtml(html: string, companyName?: string, tagline?: string, imgSrc?: string): string {
   const name = companyName || "Xyberclan";
+  const src = imgSrc || FALLBACK_LOGO_URL;
 
-  const logoImg = `<img src="cid:logo" alt="${name}" style="display:inline-block;width:48px;height:48px;border-radius:8px;vertical-align:middle;margin-right:14px;" />`;
+  const logoImg = `<img src="${src}" alt="${name}" style="display:inline-block;width:48px;height:48px;border-radius:8px;vertical-align:middle;margin-right:14px;" />`;
 
   const taglineHtml = tagline
     ? `<span style="color:#9ca3af;margin-left:6px;font-size:16px;">&mdash; ${tagline}</span>`
@@ -129,10 +131,22 @@ export async function injectBranding(html?: string): Promise<string> {
     brand = {};
   }
 
-  return await injectLogoIntoHtml(
-    html,
-    brand.logoSrc || brand.logoUrl || null,
-    brand.companyName,
-    brand.tagline
-  );
+  return injectLogoIntoHtml(html, brand.companyName, brand.tagline);
+}
+
+export async function injectBrandingWithLogo(
+  html?: string
+): Promise<{ html: string; logoAttachment: { filename: string; content: string; content_id: string; disposition: string } | null }> {
+  if (!html) return { html: html || "", logoAttachment: null };
+
+  const [brand, attachment] = await Promise.all([
+    getBrandSettings().catch(() => ({}) as any),
+    getLogoAttachment(),
+  ]);
+
+  const hasCid = attachment !== null;
+  const src = hasCid ? "cid:logo" : (brand.logoSrc || brand.logoUrl || FALLBACK_LOGO_URL);
+  const brandedHtml = injectLogoIntoHtml(html, brand.companyName, brand.tagline, src);
+
+  return { html: brandedHtml, logoAttachment: attachment };
 }
