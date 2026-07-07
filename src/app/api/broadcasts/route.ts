@@ -101,42 +101,65 @@ export async function POST(request: NextRequest) {
         .replace(/\{\{email\}\}/g, r.email);
 
     if (sendNow && recipients.length > 0) {
-      try {
-        const brandedHtml = html ? await injectBranding(html) : html;
+      const brandedHtml = html ? await injectBranding(html) : html;
 
-        let sent = 0;
-        for (const r of recipients) {
-          try {
-            await sendEmail({
-              from,
-              to: [r.email],
-              subject: personalize(subject, r),
-              html: brandedHtml ? personalize(brandedHtml, r) : undefined,
-              text: text ? personalize(text, r) : undefined,
-              tags: audienceId
-                ? [{ name: "audience_id", value: audienceId }]
-                : [{ name: "broadcast", value: name }],
-            });
-            sent++;
-          } catch {
-            // individual send failure — continue with others
-          }
-        }
+      let sent = 0;
+      let failed = 0;
+      for (const r of recipients) {
+        try {
+          const personalizedSubject = personalize(subject, r);
+          const personalizedHtml = brandedHtml ? personalize(brandedHtml, r) : undefined;
+          const personalizedText = text ? personalize(text, r) : undefined;
 
-        await db
-          .from("broadcasts")
-          .update({
+          const res = await sendEmail({
+            from,
+            to: [r.email],
+            subject: personalizedSubject,
+            html: personalizedHtml,
+            text: personalizedText,
+            tags: audienceId
+              ? [{ name: "audience_id", value: audienceId }]
+              : [{ name: "broadcast", value: name }],
+          });
+
+          await db.from("emails").insert({
+            to_email: r.email,
+            from_email: from,
+            subject: personalizedSubject,
+            html: personalizedHtml || "",
+            text: personalizedText || null,
             status: "sent",
-            sent_at: new Date().toISOString(),
-            total_sent: sent,
-          })
-          .eq("id", broadcast.id);
-      } catch (sendError) {
-        await db
-          .from("broadcasts")
-          .update({ status: "failed" })
-          .eq("id", broadcast.id);
+            type: "broadcast",
+            related_id: broadcast.id,
+            tracking_id: res?.id || null,
+          }).catch(() => {});
+
+          sent++;
+        } catch {
+          await db.from("emails").insert({
+            to_email: r.email,
+            from_email: from,
+            subject: personalize(subject, r),
+            html: brandedHtml ? personalize(brandedHtml, r) : "",
+            text: text ? personalize(text, r) : null,
+            status: "failed",
+            type: "broadcast",
+            related_id: broadcast.id,
+          }).catch(() => {});
+
+          failed++;
+        }
       }
+
+      await db
+        .from("broadcasts")
+        .update({
+          status: sent > 0 ? "sent" : "failed",
+          sent_at: new Date().toISOString(),
+          total_sent: sent,
+          total_bounced: failed,
+        })
+        .eq("id", broadcast.id);
     }
 
     return NextResponse.json(broadcast, { status: 201 });

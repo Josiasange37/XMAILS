@@ -10,7 +10,7 @@ import {
   Megaphone, Sparkles, Send, Loader2, Upload, X, FileText, Trash2,
   ChevronDown, ChevronRight, Monitor, Smartphone, Copy, RotateCcw,
   Image as FileImage, File, Brain, Users, History,
-  CheckCircle2, Circle
+  CheckCircle2, Circle, Eye, XCircle
 } from "lucide-react";
 import ContactSelect from "@/components/contact-select";
 import { formatDateTime } from "@/lib/utils";
@@ -39,6 +39,9 @@ export default function BroadcastsPage() {
   const [previewTab, setPreviewTab] = useState<"preview" | "html" | "text">("preview");
   const [showFiles, setShowFiles] = useState(false);
   const [analyticsBroadcast, setAnalyticsBroadcast] = useState<any>(null);
+  const [detailEmails, setDetailEmails] = useState<any[]>([]);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [selectedDetailEmail, setSelectedDetailEmail] = useState<any>(null);
 
   const [models, setModels] = useState<{ id: string; label: string; provider: string; group: string }[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
@@ -428,7 +431,7 @@ export default function BroadcastsPage() {
           <div className="rounded-2xl border border-border/40 bg-card/80 backdrop-blur-xl shadow-sm overflow-hidden">
             <div className="p-2 space-y-1">
               {broadcasts.map((b: any) => (
-                <button key={b.id} onClick={() => setAnalyticsBroadcast(b)} className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/40 transition-colors">
+                <button key={b.id} onClick={() => { setAnalyticsBroadcast(b); setSelectedDetailEmail(null); setLoadingDetail(true); fetch(`/api/broadcasts/${b.id}/emails`).then(r => r.json()).then(data => { setDetailEmails(Array.isArray(data) ? data : []); setLoadingDetail(false); }).catch(() => { setDetailEmails([]); setLoadingDetail(false); }); }} className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/40 transition-colors">
                   <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><Megaphone className="h-4 w-4 text-primary" /></div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -452,24 +455,106 @@ export default function BroadcastsPage() {
         )}
       </div>
 
-      <Dialog open={!!analyticsBroadcast} onOpenChange={() => setAnalyticsBroadcast(null)}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader><DialogTitle>{analyticsBroadcast?.name || "Campaign Analytics"}</DialogTitle></DialogHeader>
+      <Dialog open={!!analyticsBroadcast} onOpenChange={(open) => { if (!open) { setAnalyticsBroadcast(null); setDetailEmails([]); setSelectedDetailEmail(null); } }}>
+        <DialogContent className="rounded-2xl max-w-5xl h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {analyticsBroadcast?.name || "Campaign"}
+              {analyticsBroadcast && (
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                  analyticsBroadcast.status === "sent" ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400" :
+                  analyticsBroadcast.status === "failed" ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400" :
+                  "bg-muted/60 text-muted-foreground"
+                }`}>{analyticsBroadcast.status}</span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
           {analyticsBroadcast && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">{analyticsBroadcast.subject}</p>
-              <div className="grid grid-cols-2 gap-3">
-                {[{ label: "Sent", value: analyticsBroadcast.total_sent || 0 }, { label: "Opened", value: analyticsBroadcast.total_opened || 0 },
-                  { label: "Clicked", value: analyticsBroadcast.total_clicked || 0 },
-                  { label: "Open Rate", value: analyticsBroadcast.total_sent > 0 ? `${Math.round((analyticsBroadcast.total_opened / analyticsBroadcast.total_sent) * 100)}%` : "—" },
+            <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+              <div className="text-sm text-muted-foreground">{analyticsBroadcast.subject}</div>
+              <div className="grid grid-cols-5 gap-2">
+                {[
+                  { label: "Sent", value: detailEmails.filter((e: any) => e.status === "sent").length, color: "text-green-600" },
+                  { label: "Failed", value: detailEmails.filter((e: any) => e.status === "failed").length, color: detailEmails.filter((e: any) => e.status === "failed").length > 0 ? "text-red-600" : "text-muted-foreground" },
+                  { label: "Opened", value: analyticsBroadcast.total_opened || 0, color: "text-blue-600" },
+                  { label: "Clicked", value: analyticsBroadcast.total_clicked || 0, color: "text-blue-600" },
+                  { label: "Open Rate", value: analyticsBroadcast.total_sent > 0 ? `${Math.round((analyticsBroadcast.total_opened / analyticsBroadcast.total_sent) * 100)}%` : "—", color: "text-foreground" },
                 ].map((m) => (
-                  <div key={m.label} className="p-3 rounded-xl bg-muted/40 text-center">
-                    <p className="text-xl font-bold tracking-tight">{m.value}</p>
+                  <div key={m.label} className="p-2 rounded-xl bg-muted/40 text-center">
+                    <p className={`text-lg font-bold tracking-tight ${m.color}`}>{m.value}</p>
                     <p className="text-[10px] text-muted-foreground">{m.label}</p>
                   </div>
                 ))}
               </div>
               {analyticsBroadcast.sent_at && <p className="text-[10px] text-muted-foreground">Sent: {formatDateTime(analyticsBroadcast.sent_at)}</p>}
+              <div className="flex-1 flex gap-4 min-h-0">
+                <div className="w-1/2 flex flex-col min-h-0">
+                  <h3 className="text-xs font-semibold text-muted-foreground mb-2 shrink-0">Individual Emails ({detailEmails.length})</h3>
+                  {loadingDetail ? (
+                    <div className="flex items-center justify-center flex-1 text-sm text-muted-foreground">Loading...</div>
+                  ) : detailEmails.length === 0 ? (
+                    <div className="flex items-center justify-center flex-1 text-sm text-muted-foreground">No email records found</div>
+                  ) : (
+                    <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+                      {detailEmails.map((email: any) => (
+                        <button
+                          key={email.id}
+                          onClick={() => setSelectedDetailEmail(email)}
+                          className={`w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors ${
+                            selectedDetailEmail?.id === email.id
+                              ? "bg-primary/10 border border-primary/20"
+                              : "hover:bg-muted/40 border border-transparent"
+                          } ${email.status === "failed" ? "bg-red-50/50 dark:bg-red-950/20" : ""}`}
+                        >
+                          {email.status === "sent" ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">{email.to_email}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{email.subject}</p>
+                          </div>
+                          <span className={`text-[10px] font-medium shrink-0 ${
+                            email.status === "sent" ? "text-green-600" : "text-red-600"
+                          }`}>{email.status}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="w-1/2 flex flex-col min-h-0 border-l border-border/40 pl-4">
+                  {selectedDetailEmail ? (
+                    <>
+                      <h3 className="text-xs font-semibold text-muted-foreground mb-2 shrink-0">Email Preview</h3>
+                      <div className="shrink-0 space-y-1 mb-2 text-xs">
+                        <p><span className="text-muted-foreground">To:</span> {selectedDetailEmail.to_email}</p>
+                        <p><span className="text-muted-foreground">Subject:</span> {selectedDetailEmail.subject}</p>
+                        <p><span className="text-muted-foreground">Status:</span> <span className={selectedDetailEmail.status === "sent" ? "text-green-600 font-medium" : "text-red-600 font-medium"}>{selectedDetailEmail.status}</span></p>
+                      </div>
+                      <div className="flex-1 rounded-xl border border-border/40 overflow-hidden bg-white">
+                        {selectedDetailEmail.html ? (
+                          <iframe
+                            srcDoc={selectedDetailEmail.html}
+                            className="w-full h-full border-0"
+                            title="Email preview"
+                            sandbox="allow-same-origin"
+                          />
+                        ) : (
+                          <div className="p-4 text-xs text-muted-foreground whitespace-pre-wrap font-mono">{selectedDetailEmail.text || "(no content)"}</div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center flex-1 text-sm text-muted-foreground">
+                      <div className="text-center">
+                        <Eye className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                        <p>Select an email to preview</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>
