@@ -81,7 +81,7 @@ export default function BroadcastsPage() {
       fetch("/api/contacts").then((r) => r.json()).catch(() => ({ contacts: [] })),
     ]).then(([broadcastsData, contactsData]) => {
       setBroadcasts(Array.isArray(broadcastsData) ? broadcastsData : []);
-      setContactCount(contactsData?.contacts?.length || 0);
+      setContactCount(contactsData?.total || contactsData?.contacts?.length || 0);
       setLoading(false);
     });
   };
