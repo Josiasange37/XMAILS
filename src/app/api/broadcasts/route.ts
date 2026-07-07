@@ -122,7 +122,8 @@ export async function POST(request: NextRequest) {
               : [{ name: "broadcast", value: name }],
           });
 
-          await db.from("emails").insert({
+          try {
+            await db.from("emails").insert({
             to_email: r.email,
             from_email: from,
             subject: personalizedSubject,
@@ -132,11 +133,13 @@ export async function POST(request: NextRequest) {
             type: "broadcast",
             related_id: broadcast.id,
             tracking_id: res?.id || null,
-          }).catch(() => {});
+          });
+          } catch {}
 
           sent++;
         } catch {
-          await db.from("emails").insert({
+          try {
+            await db.from("emails").insert({
             to_email: r.email,
             from_email: from,
             subject: personalize(subject, r),
@@ -145,7 +148,8 @@ export async function POST(request: NextRequest) {
             status: "failed",
             type: "broadcast",
             related_id: broadcast.id,
-          }).catch(() => {});
+          });
+          } catch {}
 
           failed++;
         }
