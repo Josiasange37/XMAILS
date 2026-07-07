@@ -9,6 +9,7 @@ export async function sendEmail({
   text,
   replyTo,
   tags,
+  attachments,
 }: {
   from: string;
   to: string[];
@@ -17,6 +18,7 @@ export async function sendEmail({
   text?: string;
   replyTo?: string;
   tags?: { name: string; value: string }[];
+  attachments?: { filename: string; content: string; content_id: string; disposition: string }[];
 }) {
   const res = await fetch(`${RESEND_API}/emails`, {
     method: "POST",
@@ -32,6 +34,7 @@ export async function sendEmail({
       text,
       reply_to: replyTo,
       tags,
+      attachments,
     }),
   });
 

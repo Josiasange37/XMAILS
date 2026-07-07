@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { sendEmail } from "@/lib/resend";
-import { injectBranding } from "@/lib/email-brand";
+import { injectBranding, getLogoAttachment } from "@/lib/email-brand";
 
 export async function GET() {
   try {
@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
 
     if (sendNow && recipients.length > 0) {
       const brandedHtml = html ? await injectBranding(html) : html;
+      const logoAttachment = await getLogoAttachment();
 
       let sent = 0;
       let failed = 0;
@@ -120,6 +121,7 @@ export async function POST(request: NextRequest) {
             tags: audienceId
               ? [{ name: "audience_id", value: audienceId }]
               : [{ name: "broadcast", value: name }],
+            attachments: logoAttachment ? [logoAttachment] : undefined,
           });
 
           try {

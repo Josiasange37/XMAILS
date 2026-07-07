@@ -65,31 +65,33 @@ export async function deleteLogoFromStorage(filename?: string) {
 
 const FALLBACK_LOGO_URL = "https://addklmtbybzgbyevvdqa.supabase.co/storage/v1/object/public/logos/logo.png";
 
-const cachedBase64: { [url: string]: string } = {};
+let cachedLogo: { filename: string; content: string; content_id: string; disposition: string } | null | false = false;
 
-async function imageUrlToBase64(url: string): Promise<string | null> {
-  if (cachedBase64[url]) return cachedBase64[url];
+export async function getLogoAttachment(): Promise<{ filename: string; content: string; content_id: string; disposition: string } | null> {
+  if (cachedLogo !== false) return cachedLogo;
+  const url = FALLBACK_LOGO_URL;
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return null;
+    if (!res.ok) { cachedLogo = null; return null; }
     const buf = Buffer.from(await res.arrayBuffer());
     const mime = res.headers.get("content-type") || "image/png";
-    const b64 = `data:${mime};base64,${buf.toString("base64")}`;
-    cachedBase64[url] = b64;
-    return b64;
+    cachedLogo = {
+      filename: `logo.${mime.split("/").pop() || "png"}`,
+      content: buf.toString("base64"),
+      content_id: "logo",
+      disposition: "inline",
+    };
+    return cachedLogo;
   } catch {
+    cachedLogo = null;
     return null;
   }
 }
 
 export async function injectLogoIntoHtml(html: string, logoUrl: string | null, companyName?: string, tagline?: string): Promise<string> {
   const name = companyName || "Xyberclan";
-  const url = logoUrl || FALLBACK_LOGO_URL;
 
-  const b64 = await imageUrlToBase64(url);
-  const logoImg = b64
-    ? `<img src="${b64}" alt="${name}" style="display:inline-block;width:48px;height:48px;border-radius:8px;vertical-align:middle;margin-right:14px;" />`
-    : `<span style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:10px;background:#374151;color:#fff;font-size:18px;font-weight:700;margin-right:14px;vertical-align:middle;">${name.charAt(0).toUpperCase()}</span>`;
+  const logoImg = `<img src="cid:logo" alt="${name}" style="display:inline-block;width:48px;height:48px;border-radius:8px;vertical-align:middle;margin-right:14px;" />`;
 
   const taglineHtml = tagline
     ? `<span style="color:#9ca3af;margin-left:6px;font-size:16px;">&mdash; ${tagline}</span>`
