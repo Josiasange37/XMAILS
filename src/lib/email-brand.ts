@@ -66,9 +66,9 @@ export async function deleteLogoFromStorage(filename?: string) {
 const FALLBACK_LOGO_URL =
   "https://addklmtbybzgbyevvdqa.supabase.co/storage/v1/object/public/logos/logo.png";
 
-function injectLogoIntoHtml(html: string, companyName?: string, tagline?: string): string {
+function injectLogoIntoHtml(html: string, companyName?: string, tagline?: string, isCid?: boolean): string {
   const name = companyName || "Xyberclan";
-  const src = FALLBACK_LOGO_URL;
+  const src = isCid ? "cid:logo" : FALLBACK_LOGO_URL;
 
   const logoImg = `<img src="${src}" alt="${name}" style="display:inline-block;width:48px;height:48px;border-radius:8px;vertical-align:middle;margin-right:14px;" />`;
 
@@ -109,4 +109,29 @@ export async function injectBranding(html?: string): Promise<string> {
   }
 
   return injectLogoIntoHtml(html, brand.companyName, brand.tagline);
+}
+
+export async function injectBrandingForBroadcast(
+  html?: string
+): Promise<{ html: string; logoAttachment: { path: string; filename: string; content_id: string; content_type: string } | null }> {
+  if (!html) return { html: html || "", logoAttachment: null };
+
+  let brand;
+  try {
+    brand = await getBrandSettings();
+  } catch {
+    brand = {};
+  }
+
+  const brandedHtml = injectLogoIntoHtml(html, brand.companyName, brand.tagline, true);
+
+  return {
+    html: brandedHtml,
+    logoAttachment: {
+      path: FALLBACK_LOGO_URL,
+      filename: "logo.png",
+      content_id: "logo",
+      content_type: "image/png",
+    },
+  };
 }
