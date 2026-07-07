@@ -65,28 +65,34 @@ export async function deleteLogoFromStorage(filename?: string) {
 
 const FALLBACK_LOGO_URL = "https://addklmtbybzgbyevvdqa.supabase.co/storage/v1/object/public/logos/logo.png";
 
-let cachedLogo: { filename: string; content: string; content_id: string; disposition: string } | null | false = false;
+let cachedLogo: { filename: string; content: string; content_id: string; disposition: string; type: string } | null | false = false;
 
-export async function getLogoAttachment(): Promise<{ filename: string; content: string; content_id: string; disposition: string } | null> {
+export async function getLogoAttachment(): Promise<{ filename: string; content: string; content_id: string; disposition: string; type: string } | null> {
   if (cachedLogo !== false) return cachedLogo;
   const url = FALLBACK_LOGO_URL;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-    if (!res.ok) { cachedLogo = null; return null; }
-    const buf = Buffer.from(await res.arrayBuffer());
-    const mime = res.headers.get("content-type") || "image/png";
-    cachedLogo = {
-      filename: `logo.${mime.split("/").pop() || "png"}`,
-      content: buf.toString("base64"),
-      content_id: "logo",
-      disposition: "inline",
-    };
-    return cachedLogo;
-  } catch (e) {
-    console.error("getLogoAttachment fetch failed:", e instanceof Error ? e.message : e);
-    cachedLogo = null;
-    return null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(15000),
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (!res.ok) { cachedLogo = null; return null; }
+      const buf = Buffer.from(await res.arrayBuffer());
+      const mime = res.headers.get("content-type") || "image/png";
+      cachedLogo = {
+        filename: `logo.${mime.split("/").pop() || "png"}`,
+        content: buf.toString("base64"),
+        content_id: "logo",
+        disposition: "inline",
+        type: mime,
+      };
+      return cachedLogo;
+    } catch (e) {
+      console.error(`getLogoAttachment attempt ${attempt + 1} failed:`, e instanceof Error ? e.message : e);
+    }
   }
+  cachedLogo = null;
+  return null;
 }
 
 function injectLogoIntoHtml(html: string, companyName?: string, tagline?: string, imgSrc?: string): string {
@@ -136,7 +142,7 @@ export async function injectBranding(html?: string): Promise<string> {
 
 export async function injectBrandingWithLogo(
   html?: string
-): Promise<{ html: string; logoAttachment: { filename: string; content: string; content_id: string; disposition: string } | null }> {
+): Promise<{ html: string; logoAttachment: { filename: string; content: string; content_id: string; disposition: string; type: string } | null }> {
   if (!html) return { html: html || "", logoAttachment: null };
 
   const [brand, attachment] = await Promise.all([

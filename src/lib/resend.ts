@@ -18,7 +18,7 @@ export async function sendEmail({
   text?: string;
   replyTo?: string;
   tags?: { name: string; value: string }[];
-  attachments?: { filename: string; content: string; content_id: string; disposition: string }[];
+  attachments?: { filename: string; content: string; content_id: string; disposition: string; type?: string }[];
 }) {
   const res = await fetch(`${RESEND_API}/emails`, {
     method: "POST",
